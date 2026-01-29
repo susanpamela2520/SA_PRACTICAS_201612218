@@ -1,0 +1,44 @@
+CREATE TYPE rol_usuario AS ENUM (
+  'CLIENTE',
+  'RESTAURANTE',
+  'REPARTIDOR',
+  'ADMINISTRADOR'
+);
+
+CREATE TYPE estado_orden AS ENUM (
+  'CREADA',
+  'EN_PROCESO',
+  'LISTA',
+  'FINALIZADA',
+  'RECHAZADA',
+  'CANCELADA'
+);
+
+CREATE TYPE estado_entrega AS ENUM (
+  'PENDIENTE',
+  'ASIGNADA',
+  'EN_CAMINO',
+  'ENTREGADO',
+  'CANCELADO'
+);
+
+CREATE TYPE categoria_restaurante AS ENUM (
+  'COMIDA_RAPIDA',
+  'ITALIANA',
+  'MEXICANA',
+  'CHINA',
+  'JAPONESA',
+  'GUATEMALTECA',
+  'AMERICANA',
+  'VEGETARIANA',
+  'POSTRES',
+  'BEBIDAS',
+  'OTRA'
+);
+
+CREATE TYPE tipo_vehiculo AS ENUM (
+  'BICICLETA',
+  'MOTOCICLETA',
+  'AUTOMOVIL',
+  'CAMINANDO'
+);
