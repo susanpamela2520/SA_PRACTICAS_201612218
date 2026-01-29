@@ -227,3 +227,29 @@ Esta arquitectura permite escalar los servicios de manera independiente, facilit
 
 ![Texto alternativo](img/DiagramaAltoNivel.png)
 ---
+
+----
+# DIAGRAMA DESPLIEGUE 
+----
+
+El diagrama de despliegue es una vista mas simple de cómo se ejecuta el sistema Delivereats tanto en el entorno de desarrollo como en la nube, permitiendo identificar claramente los componentes principales y su relación.
+
+### Desarrollo
+En el entorno local se representa la ejecución del sistema durante la etapa de desarrollo. El Frontend corresponde a la aplicación web utilizada por los usuarios para interactuar con el sistema. Esta aplicación se comunica mediante peticiones **REST** con el **Backend**, el cual agrupa el API Gateway y los microservicios que contienen la lógica de negocio del sistema.
+
+El backend se conecta a una **base de datos PostgreSQL**, donde se almacena la información necesaria para el funcionamiento del sistema. Esta separación permite desarrollar y probar la aplicación de forma controlada antes de su despliegue.
+
+### Google Cloud Platform
+En el entorno de producción, el sistema se encuentra desplegado en **Google Cloud Platform (GCP)**. El acceso de los usuarios se realiza a través de un **Load Balancer**, el cual gestiona las conexiones seguras mediante **HTTPS** y distribuye el tráfico hacia los servicios disponibles.
+
+El **Frontend Service** se ejecuta en **Cloud Run**, permitiendo que la aplicación web escale automáticamente según la demanda. Este frontend se comunica con los **Backend Services**, que incluyen el API Gateway y los microservicios desplegados también en Cloud Run, encargados de procesar las solicitudes del sistema.
+
+Los servicios de backend se conectan a **Cloud SQL con PostgreSQL**, una base de datos administrada que garantiza la persistencia, disponibilidad y seguridad de los datos. Adicionalmente, el frontend accede a **Cloud Storage** para la carga y consulta de archivos estáticos, como imágenes o recursos de la aplicación.
+
+### Flujo General del Sistema
+El flujo de funcionamiento del sistema inicia cuando el usuario accede a la aplicación web. Las solicitudes son enviadas al backend a través del API Gateway, donde se procesan y se obtiene o almacena la información necesaria en la base de datos. Finalmente, las respuestas son retornadas al frontend para su presentación al usuario.
+
+### Beneficios del Enfoque de Despliegue
+Este modelo de despliegue permite una clara separación entre desarrollo y producción, facilita el escalado automático de los servicios, mejora la disponibilidad del sistema y simplifica el mantenimiento, lo que lo hace adecuado para aplicaciones modernas basadas en microservicios.
+
+![Texto alternativo](img/DiagramaDespliegue.png)
