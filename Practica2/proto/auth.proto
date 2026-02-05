@@ -1,4 +1,4 @@
-syntax = "proto3"; //Se usa version 3 de protobuf
+syntax = "proto3";
 package auth;
 
 service AuthService {
@@ -9,7 +9,7 @@ service AuthService {
 message RegisterRequest {
   string email = 1;
   string password = 2;
-  string role = 3;           // CLIENTE | ADMIN | REPARTIDOR | RESTAURANTE
+  string role = 3;
   string nombreCompleto = 4;
   string telefono = 5;
 }
@@ -22,5 +22,5 @@ message LoginRequest {
 message AuthResponse {
   bool ok = 1;
   string message = 2;
-  string token = 3;          // JWT
+  string token = 3;
 }
