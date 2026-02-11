@@ -2,6 +2,24 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login } from '../api'
 
+// ✅ Decodificar el payload del JWT sin librerías
+function parseJwt(token) {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    )
+    return JSON.parse(jsonPayload)
+  } catch (e) {
+    return null
+  }
+  
+}
+
 function Login({ setToken }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -14,31 +32,32 @@ function Login({ setToken }) {
 
     try {
       const result = await login({ email, password })
-      
-      if (result.ok) {
-        // GUARDAMOS TOKEN EN LOCALSTORAGE 
-        localStorage.setItem('token', result.token)
-        
-       // AQUI SE GUARDA LA INFO DEL USUARION EN EL LOCALSTORAGE
-        if (result.user) {
-          localStorage.setItem('user_email', result.user.email)
-          localStorage.setItem('user_role', result.user.role)
-          localStorage.setItem('user_name', result.user.nombreCompleto)
-        }
-        
-        setToken(result.token)
-        setMessage('✅ Login exitoso')
-        
-        // AQUI REDIRECCIONAMOS AL USUARIO SEGUN SU ROL
-        setTimeout(() => {
-          if (result.user.role === 'ADMIN') {
-            navigate('/admin')
-          } else {
-            navigate('/dashboard')
-          }
-        }, 1000)
+
+      if (!result?.ok || !result?.token) {
+        setMessage(`❌ ${result?.message || 'Login fallido'}`)
+        return
+      }
+
+      // ✅ Guardar token
+      localStorage.setItem('token', result.token)
+      setToken(result.token)
+
+      // ✅ Sacar rol desde JWT (porque tu backend NO devuelve user)
+      const payload = parseJwt(result.token)
+      const role = String(payload?.role || payload?.rol || '').toUpperCase()
+
+      // ✅ Guardar info mínima en localStorage
+      localStorage.setItem('user_role', role)
+      localStorage.setItem('user_email', payload?.email || email)
+      localStorage.setItem('user_name', payload?.nombreCompleto || '')
+
+      setMessage('✅ Login exitoso')
+
+      // ✅ Redirigir inmediato (sin setTimeout)
+      if (role === 'ADMIN' || role === 'ADMINISTRADOR') {
+        navigate('/admin', { replace: true })
       } else {
-        setMessage(`❌ ${result.message}`)
+        navigate('/dashboard', { replace: true })
       }
     } catch (error) {
       setMessage('❌ Error al conectar con el servidor')
@@ -59,7 +78,7 @@ function Login({ setToken }) {
             placeholder="tu@email.com"
           />
         </div>
-        
+
         <div className="form-group">
           <label>Contraseña:</label>
           <input

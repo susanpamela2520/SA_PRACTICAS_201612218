@@ -12,4 +12,4 @@ VALUES (
 
 CREDENCIALES
 Email: admin@delivereats.com
-Contraseña: admin123
+Contraseña: password
