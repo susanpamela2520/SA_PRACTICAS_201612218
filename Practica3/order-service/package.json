@@ -1,7 +1,7 @@
 {
-  "name": "catalog-service",
+  "name": "order-service",
   "version": "1.0.0",
-  "description": "Servicio de catálogo de restaurantes - gRPC Server",
+  "description": "Servicio de órdenes - gRPC Client",
   "main": "dist/main.js",
   "scripts": {
     "build": "nest build",

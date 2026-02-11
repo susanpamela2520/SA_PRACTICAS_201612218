@@ -27,3 +27,15 @@ message ValidationResponse {
   string message = 2;
   repeated string errors = 3;  // Lista de errores específicos si hay problemas
 }
+```
+
+---
+
+## 📁 Dónde colocarlo
+
+Coloca este archivo en:
+```
+Practica3/
+└── proto/
+    ├── auth.proto         ← Ya lo tienes
+    └── catalog.proto      ← Este archivo nuevo
