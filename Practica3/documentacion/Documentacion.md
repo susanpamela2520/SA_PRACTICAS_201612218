@@ -1,4 +1,38 @@
 
+## Justificación 
+
+## DOCKER-COMPOSE.YML
+- Se agregaron 2 bases de datos independientes para implementar el patrón **Database-per-Service**
+- Se agregaron 2 microservicios nuevos: `catalog-service` (gRPC server) y `order-service` (gRPC client)
+- Se montó el volumen `/proto` compartido para que ambos servicios lean el mismo contrato gRPC
+
+## catalog.proto
+- Define el contrato de comunicación gRPC entre order-service (cliente) y catalog-service (servidor)
+- Especifica tipos de datos precisos (int32, double, bool, string, repeated)
+- Sigue el estándar Protocol Buffers para comunicación eficiente
+
+## CATALOG-SERVICE (Servidor gRPC)
+- Implementa el servidor gRPC que recibe peticiones de validación
+- Usa @GrpcMethod para exponer el método definido en el proto
+- Mapea los campos de camelCase a snake_case para compatibilidad
+
+## catalog.service.ts:
+- Valida 4 criterios: existencia, pertenencia al restaurante, disponibilidad, precio correcto
+- Retorna todos los errores encontrados en un solo array para mejor UX
+- Usa la base de datos delivereats_catalog para consultar productos
+
+ ## ORDER-SERVICE (Cliente gRPC)
+- Crea el cliente gRPC que se conecta a catalog-service:50052
+- Carga el proto dinámicamente desde el volumen compartido
+- Implementa ValidateProducts como método asíncrono que retorna una Promise
+
+## ENTIDADES
+
+- Representa el catálogo de productos de cada restaurante
+- El campo disponible permite validar disponibilidad en tiempo real
+- Usa @Column({ name: 'restaurant_id' }) para mapear snake_case a camelCase
+
+
 ### Carga en DB 
 En esta captura se muestra que se cargaron los datos correctos en la base de datos, haciendo los inserts en la tabla productos 
 
