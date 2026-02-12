@@ -10,7 +10,7 @@ export class CatalogGrpcClient implements OnModuleInit {
   async onModuleInit() {
     const PROTO_PATH = '/app/proto/catalog.proto';
     
-    console.log('🔍 Intentando cargar proto desde:', PROTO_PATH);
+    console.log('Intentando cargar proto desde:', PROTO_PATH);
 
     const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
       keepCase: true,
@@ -28,11 +28,16 @@ export class CatalogGrpcClient implements OnModuleInit {
       grpc.credentials.createInsecure(),
     );
 
-    console.log('✅ Catalog gRPC Client inicializado:', process.env.CATALOG_GRPC_URL);
+    console.log('Catalog gRPC Client inicializado:', process.env.CATALOG_GRPC_URL);
   }
 
   validateProducts(restaurantId: number, products: any[]): Promise<any> {
     return new Promise((resolve, reject) => {
+      console.log('Enviando a gRPC:', {
+        restaurant_id: restaurantId,
+        products: products
+      });
+
       this.client.ValidateProducts(
         {
           restaurant_id: restaurantId,
@@ -40,10 +45,10 @@ export class CatalogGrpcClient implements OnModuleInit {
         },
         (error: any, response: any) => {
           if (error) {
-            console.error('❌ Error en ValidateProducts:', error);
+            console.error('Error en ValidateProducts:', error);
             reject(error);
           } else {
-            console.log('✅ Respuesta de ValidateProducts:', response);
+            console.log('Respuesta de ValidateProducts:', response);
             resolve(response);
           }
         },

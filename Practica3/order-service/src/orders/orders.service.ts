@@ -13,23 +13,28 @@ export class OrdersService {
   ) {}
 
   async createOrder(dto: any) {
-    console.log('📦 Iniciando creación de orden:', {
+    console.log('Iniciando creacion de orden:', {
       restaurantId: dto.restaurantId,
       userId: dto.userId,
       productCount: dto.productos?.length,
     });
 
-    // 🔍 VALIDACIÓN GRPC - Antes de persistir
+    // Validacion GRPC
     try {
+      console.log('Llamando a validateProducts con:', {
+        restaurantId: dto.restaurantId,
+        productos: dto.productos
+      });
+
       const validation = await this.catalogClient.validateProducts(
         dto.restaurantId,
         dto.productos,
       );
 
-      console.log('🎯 Resultado validación:', validation);
+      console.log('Resultado validacion:', validation);
 
       if (!validation.valid) {
-        console.log('❌ ORDEN RECHAZADA - Validación fallida:', validation.errors);
+        console.log('ORDEN RECHAZADA:', validation.errors);
         throw new HttpException(
           {
             ok: false,
@@ -40,9 +45,9 @@ export class OrdersService {
         );
       }
 
-      console.log('✅ Validación exitosa, procediendo a crear orden...');
+      console.log('Validacion exitosa, creando orden...');
     } catch (error) {
-      console.error('❌ Error al validar productos:', error);
+      console.error('Error al validar productos:', error);
       
       if (error instanceof HttpException) {
         throw error;
@@ -58,7 +63,6 @@ export class OrdersService {
       );
     }
 
-    // ✅ Validación exitosa - Crear orden
     const total = dto.productos.reduce(
       (sum: number, p: any) => sum + p.expected_price * p.quantity,
       0,
@@ -74,7 +78,7 @@ export class OrdersService {
 
     const saved = await this.orderRepo.save(order);
 
-    console.log('✅ ORDEN CREADA EXITOSAMENTE:', {
+    console.log('ORDEN CREADA:', {
       orderId: saved.id,
       total: saved.total,
       estado: saved.estado,

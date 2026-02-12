@@ -13,63 +13,62 @@ export class CatalogService {
   async validateProducts(restaurantId: number, products: any[]) {
     const errors: string[] = [];
 
-    console.log(`🔎 Validando ${products.length} productos para restaurante ${restaurantId}`);
+    console.log('Validando productos para restaurante:', restaurantId);
 
     for (const item of products) {
       const product = await this.productRepo.findOne({
         where: { id: item.product_id },
       });
 
-      // ❌ Producto no existe
       if (!product) {
         errors.push(`Producto ${item.product_id} no existe`);
-        console.log(`❌ Producto ${item.product_id} NO encontrado`);
+        console.log('Producto NO encontrado:', item.product_id);
         continue;
       }
 
-      // ❌ Producto no pertenece al restaurante
+      console.log('Producto encontrado:', {
+        id: product.id,
+        nombre: product.nombre,
+        restaurantId: product.restaurantId,
+        disponible: product.disponible,
+        precio: product.precio
+      });
+
       if (product.restaurantId !== restaurantId) {
-        errors.push(
-          `Producto ${item.product_id} no pertenece al restaurante ${restaurantId}`,
-        );
-        console.log(
-          `❌ Producto ${item.product_id} pertenece a restaurante ${product.restaurantId}, no a ${restaurantId}`,
-        );
+        errors.push(`Producto ${item.product_id} no pertenece al restaurante ${restaurantId}`);
+        console.log('Producto pertenece a otro restaurante');
         continue;
       }
 
-      // ❌ Producto no disponible
       if (!product.disponible) {
-        errors.push(`Producto ${item.product_id} (${product.nombre}) no está disponible`);
-        console.log(`❌ Producto ${item.product_id} NO disponible`);
+        errors.push(`Producto ${item.product_id} no esta disponible`);
+        console.log('Producto NO disponible');
         continue;
       }
 
-      // ❌ Precio no coincide
-      if (parseFloat(item.expected_price) !== parseFloat(product.precio.toString())) {
-        errors.push(
-          `Precio incorrecto para ${product.nombre}. Esperado: ${item.expected_price}, Actual: ${product.precio}`,
-        );
-        console.log(
-          `❌ Precio incorrecto: esperado ${item.expected_price}, actual ${product.precio}`,
-        );
+      const productPrice = parseFloat(product.precio.toString());
+      const expectedPrice = parseFloat(item.expected_price);
+
+      if (productPrice !== expectedPrice) {
+        errors.push(`Precio incorrecto para ${product.nombre}. Esperado: ${expectedPrice}, Actual: ${productPrice}`);
+        console.log('Precio incorrecto');
         continue;
       }
 
-      console.log(`✅ Producto ${item.product_id} validado correctamente`);
+      console.log('Producto validado OK');
     }
 
     if (errors.length > 0) {
       return {
         valid: false,
-        message: 'Validación fallida',
+        message: 'Validacion fallida',
         errors,
       };
     }
 
     return {
       valid: true,
-      message: 'Todos los productos son válidos',
+      message: 'Todos los productos son validos',
       errors: [],
     };
   }

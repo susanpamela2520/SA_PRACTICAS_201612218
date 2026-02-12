@@ -8,24 +8,40 @@ export class CatalogController {
 
   @GrpcMethod('CatalogService', 'ValidateProducts')
   async validateProducts(data: any) {
-    console.log('🔍 Validación solicitada:', {
-      restaurantId: data.restaurant_id,
-      productCount: data.products?.length,
+    console.log('RAW DATA RECIBIDO EN GRPC:', JSON.stringify(data, null, 2));
+    
+    const restaurantId = data.restaurant_id || data.restaurantId;
+    
+    // Mapea los productos de camelCase a snake_case
+    const products = (data.products || []).map((p: any) => ({
+      product_id: p.product_id || p.productId,
+      expected_price: p.expected_price || p.expectedPrice,
+      quantity: p.quantity,
+    }));
+
+    console.log('DATOS PROCESADOS:', {
+      restaurantId,
+      products
+    });
+
+    console.log('Validacion solicitada:', {
+      restaurantId: restaurantId,
+      productCount: products.length,
     });
 
     try {
       const result = await this.catalogService.validateProducts(
-        data.restaurant_id,
-        data.products,
+        restaurantId,
+        products,
       );
 
-      console.log('✅ Resultado validación:', result);
+      console.log('Resultado validacion:', result);
       return result;
     } catch (error) {
-      console.error('❌ Error en validación:', error);
+      console.error('Error en validacion:', error);
       return {
         valid: false,
-        message: 'Error en validación',
+        message: 'Error en validacion',
         errors: [error.message],
       };
     }
