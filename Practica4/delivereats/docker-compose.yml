@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  # --- MICROSERVICIOS ---
+
+  auth-service:
+    image: pampam4188/delivereats-auth-service
+    container_name: auth_service_container
+    ports:
+      - "50051:50051"
+    environment:
+      DB_HOST_AUTH: 34.27.77.234
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: Hola.123#
+      DB_NAME_AUTH: auth-db
+    networks:
+      - delivereats-network
+
+  restaurant-service:
+    image: pampam4188/delivereats-restaurant-service
+    container_name: restaurant_service_container
+    ports:
+      - "50052:50052"
+    environment:
+      DB_HOST_REST: 34.44.69.39
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: Hola.123#
+      DB_NAME_REST: restaurant-db
+    networks:
+      - delivereats-network
+
+  order-service:
+    image: pampam4188/delivereats-order-service
+    container_name: order_service_container
+    ports:
+      - "50053:50053"
+    environment:
+      DB_HOST_ORDER: 34.69.188.27
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: Hola.123#
+      DB_NAME_ORDER: order-db
+    networks:
+      - delivereats-network
+
+  api-gateway:
+    image: pampam4188/delivereats-api-gateway
+    container_name: api_gateway_container
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - restaurant-service
+      - order-service
+    networks:
+      - delivereats-network
+
+networks:
+  delivereats-network:
+    driver: bridge
