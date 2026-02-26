@@ -1,6 +1,44 @@
 version: "3.8"
 
 services:
+  # --- BASES DE DATOS ---
+
+  postgres-auth:
+    image: postgres:15
+    container_name: postgres_auth
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Hola.123#
+      POSTGRES_DB: auth-db
+    ports:
+      - "5433:5432"
+    networks:
+      - delivereats-network
+
+  postgres-restaurant:
+    image: postgres:15
+    container_name: postgres_restaurant
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Hola.123#
+      POSTGRES_DB: restaurant-db
+    ports:
+      - "5434:5432"
+    networks:
+      - delivereats-network
+
+  postgres-order:
+    image: postgres:15
+    container_name: postgres_order
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Hola.123#
+      POSTGRES_DB: order-db
+    ports:
+      - "5435:5432"
+    networks:
+      - delivereats-network
+
   # --- MICROSERVICIOS ---
 
   auth-service:
@@ -9,11 +47,13 @@ services:
     ports:
       - "50051:50051"
     environment:
-      DB_HOST_AUTH: 34.27.77.234
+      DB_HOST_AUTH: postgres-auth
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: Hola.123#
       DB_NAME_AUTH: auth-db
+    depends_on:
+      - postgres-auth
     networks:
       - delivereats-network
 
@@ -23,11 +63,13 @@ services:
     ports:
       - "50052:50052"
     environment:
-      DB_HOST_REST: 34.44.69.39
+      DB_HOST_REST: postgres-restaurant
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: Hola.123#
       DB_NAME_REST: restaurant-db
+    depends_on:
+      - postgres-restaurant
     networks:
       - delivereats-network
 
@@ -37,11 +79,13 @@ services:
     ports:
       - "50053:50053"
     environment:
-      DB_HOST_ORDER: 34.69.188.27
+      DB_HOST_ORDER: postgres-order
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: Hola.123#
       DB_NAME_ORDER: order-db
+    depends_on:
+      - postgres-order
     networks:
       - delivereats-network
 
