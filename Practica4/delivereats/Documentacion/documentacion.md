@@ -81,3 +81,66 @@ Este diagrama representa el esquema de base de datos bajo el enfoque database-pe
 ![diagramaActividades](./img/Actividades.png)
 
 Este diagrama representa el flujo principal de la Fase 2 de Delivereats, organizado por carriles (swimlanes) para identificar responsabilidades por componente. El Cliente agrega ítems al carrito en el frontend y confirma la orden mediante POST /orders. El API Gateway aplica controles de seguridad con AuthGuard (validación JWT) y RolesGuard (rol Cliente); si falla, responde con 401 o 403. Si es válido, el Gateway invoca al Order-Service vía gRPC para crear la orden con estado PENDING, generar un correlationId y publicar el evento order.created. RabbitMQ encola el mensaje con persistencia, y los consumidores (Restaurant-Service y Notification-Service) procesan el evento de manera asíncrona, registrando confirmaciones/notificaciones. Finalmente, el Order-Service retorna el OrderResponse al Gateway y este responde al frontend con la confirmación de la orden
+
+
+# Implementacion de Kubernets
+
+Implementacion de Kubernetes en el proyecto Fase 2
+
+app-web (Frontend React)
+api-gateway
+auth-service
+restaurant-service
+order-service
+notification-service
+RabbitMQ
+
+Bases de datos independientes:
+    auth-db
+    restaurant-db
+    order-db
+
+
+## Pasos 
+
+### Paso 1
+Escribe esto en consola.
+```Javascript 
+kubectl create namespace delivereats
+```
+### Paso 2
+Con esto aparece el nombre "deliverearts"
+```javascript
+kubectl get ns
+```
+
+### Paso 3
+
+Todos los valores sensibles deben almacenarse como Secrets.
+
+* Secret de Base de Datos
+
+```javascript
+kubectl create secret generic db-secrets \
+  --namespace delivereats \
+  --from-literal=DB_USER='postgres' \
+  --from-literal=DB_PASSWORD='TU_PASSWORD_AQUI'
+```
+
+* Secret JWT
+
+```javascript
+    kubectl create secret generic rabbitmq-secret \
+  --namespace delivereats \
+  --from-literal=RABBITMQ_URL='amqp://guest:guest@rabbitmq:5672'
+```
+```javascript
+  * Secret RabbitMQ
+  kubectl create secret generic rabbitmq-secret \
+  --namespace delivereats \
+  --from-literal=RABBITMQ_URL='amqp://guest:guest@rabbitmq:5672'
+  ```
+  Se puede verificar con el siguiente comando:
+```javascript
+kubectl get secrets -n delivereat
+```
