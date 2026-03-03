@@ -9,8 +9,8 @@ export enum PaymentStatus {
 }
 
 export enum PaymentMethod {
-  CREDIT_CARD  = 'CREDIT_CARD',
-  DEBIT_CARD   = 'DEBIT_CARD',
+  CREDIT_CARD    = 'CREDIT_CARD',
+  DEBIT_CARD     = 'DEBIT_CARD',
   DIGITAL_WALLET = 'DIGITAL_WALLET',
 }
 
@@ -22,7 +22,7 @@ export class Payment {
   @Column()
   orderId: number;
 
-  @Column()
+  @Column({ nullable: true })
   userId: number;
 
   @Column('decimal', { precision: 10, scale: 2 })
@@ -34,18 +34,15 @@ export class Payment {
   @Column({ type: 'enum', enum: PaymentMethod })
   method: PaymentMethod;
 
-  // Datos de tarjeta (solo últimos 4 dígitos — nunca el número completo)
   @Column({ nullable: true })
   cardLastFour: string;
 
   @Column({ nullable: true })
   cardHolder: string;
 
-  // Para cartera digital
   @Column({ nullable: true })
   walletAlias: string;
 
-  // Código de transacción simulado
   @Column({ nullable: true })
   transactionCode: string;
 
