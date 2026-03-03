@@ -1,5 +1,4 @@
 // src/order/payment/payment.component.ts
-// Vista donde el cliente paga su orden
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, Validators } from '@angular/forms';
@@ -26,8 +25,6 @@ export class PaymentComponent implements OnInit {
   success = signal(false);
   transactionCode = signal('');
   paymentMethod = signal<'card' | 'wallet'>('card');
-
-  // Tasa de cambio GTQ → USD
   exchangeRate = signal<number | null>(null);
   loadingRate = signal(false);
 
@@ -45,11 +42,21 @@ export class PaymentComponent implements OnInit {
   });
 
   ngOnInit() {
-    const id = this.route.snapshot.paramMap.get('orderId');
-    const total = this.route.snapshot.queryParamMap.get('total');
-    this.orderId.set(Number(id));
-    this.orderTotal.set(Number(total) || 0);
-    this.loadExchangeRate();
+    const id = Number(this.route.snapshot.paramMap.get('orderId'));
+    this.orderId.set(id);
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    this.http.get<any>(`${this.apiUrl}/orders/${id}`, { headers }).subscribe({
+      next: (order) => {
+        this.orderTotal.set(Number(order.total));
+        this.loadExchangeRate();
+      },
+      error: () => {
+        const total = this.route.snapshot.queryParamMap.get('total');
+        this.orderTotal.set(Number(total) || 0);
+        this.loadExchangeRate();
+      },
+    });
   }
 
   loadExchangeRate() {
@@ -57,17 +64,14 @@ export class PaymentComponent implements OnInit {
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
     this.http.get<any>(`${this.apiUrl}/fx/rate?from=GTQ&to=USD`, { headers }).subscribe({
-      next: (res) => {
-        this.exchangeRate.set(res.rate);
-        this.loadingRate.set(false);
-      },
+      next: (res) => { this.exchangeRate.set(res.rate); this.loadingRate.set(false); },
       error: () => this.loadingRate.set(false),
     });
   }
 
   get usdAmount(): string {
     const rate = this.exchangeRate();
-    if (!rate) return '—';
+    if (!rate || !this.orderTotal()) return '—';
     return (this.orderTotal() * rate).toFixed(2);
   }
 
@@ -85,7 +89,10 @@ export class PaymentComponent implements OnInit {
     };
 
     if (this.paymentMethod() === 'card') {
-      if (this.cardForm.invalid) return;
+      if (this.cardForm.invalid) {
+        this.error.set('Completa todos los campos de la tarjeta.');
+        return;
+      }
       const cardNum = this.cardForm.value.cardNumber || '';
       payload = {
         ...payload,
@@ -93,7 +100,10 @@ export class PaymentComponent implements OnInit {
         cardLastFour: cardNum.slice(-4),
       };
     } else {
-      if (this.walletForm.invalid) return;
+      if (this.walletForm.invalid) {
+        this.error.set('Ingresa el alias de tu cartera.');
+        return;
+      }
       payload.walletAlias = this.walletForm.value.walletAlias;
     }
 
@@ -107,7 +117,7 @@ export class PaymentComponent implements OnInit {
           this.success.set(true);
           this.transactionCode.set(res.transactionCode);
         } else {
-          this.error.set('Pago rechazado. Verifica los datos e intenta de nuevo.');
+          this.error.set('Pago rechazado. Intenta de nuevo.');
         }
       },
       error: (err) => {
