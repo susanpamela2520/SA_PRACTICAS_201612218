@@ -1,0 +1,230 @@
+<!-- order-view.component.html -->
+
+<div class="order-view-container">
+
+  <!-- Encabezado -->
+  <header class="view-header">
+    <div class="header-left">
+      <button mat-icon-button (click)="goBack()" matTooltip="Volver">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div>
+        <h1>{{ restaurantName() || 'Menú' }}</h1>
+        <small>Selecciona los platos que deseas pedir</small>
+      </div>
+    </div>
+
+    @if (cart.count() > 0) {
+      <button mat-raised-button color="primary"
+        (click)="isCartOpen.set(true)" class="header-cart-btn">
+        <mat-icon [matBadge]="cart.count().toString()" matBadgeColor="warn">
+          shopping_cart
+        </mat-icon>
+        Ver pedido · Q{{ cart.total() | number:'1.2-2' }}
+      </button>
+    }
+  </header>
+
+  <!-- Warning mezcla restaurantes -->
+  @if (cart.mixedWarning()) {
+    <div class="mixed-warning">
+      <mat-icon>warning</mat-icon>
+      <div class="warning-text">
+        <strong>Tu carrito tiene ítems de otro restaurante.</strong>
+        <p>Vacía el carrito para pedir aquí.</p>
+      </div>
+      <div class="warning-actions">
+        <button mat-raised-button color="warn" (click)="clearAndContinue()">
+          Vaciar y continuar
+        </button>
+        <button mat-button (click)="cart.dismissWarning()">Cancelar</button>
+      </div>
+    </div>
+  }
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="48"></mat-spinner>
+      <p>Cargando menú...</p>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error()) {
+    <div class="error-state">
+      <mat-icon color="warn">error_outline</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Grid de platos -->
+  @if (!loading() && !error()) {
+    <div class="menu-grid">
+      @for (item of menuItems(); track item.id) {
+        <mat-card class="dish-card">
+          <mat-card-header>
+            <div class="dish-icon" mat-card-avatar>🍴</div>
+            <mat-card-title>{{ item.name }}</mat-card-title>
+            <mat-card-subtitle>{{ item.description }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <p class="dish-price">Q{{ item.price | number:'1.2-2' }}</p>
+          </mat-card-content>
+          <mat-card-actions align="end">
+            <button mat-fab
+              [color]="addedFeedback().has(item.id!) ? 'accent' : 'primary'"
+              (click)="addToCart(item)"
+              [matTooltip]="'Agregar ' + item.name"
+              class="add-btn">
+              <mat-icon>{{ addedFeedback().has(item.id!) ? 'check' : 'add' }}</mat-icon>
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      } @empty {
+        <div class="empty-menu">
+          <mat-icon>no_meals</mat-icon>
+          <p>No hay platos disponibles.</p>
+        </div>
+      }
+    </div>
+  }
+
+</div>
+
+<!-- FAB flotante -->
+@if (cart.count() > 0) {
+  <div class="cart-fab">
+    <button mat-fab extended color="primary" (click)="isCartOpen.set(true)">
+      <mat-icon [matBadge]="cart.count().toString()" matBadgeColor="warn">
+        shopping_cart
+      </mat-icon>
+      Ver pedido · Q{{ cart.total() | number:'1.2-2' }}
+    </button>
+  </div>
+}
+
+<!-- ═══════════ DRAWER DEL CARRITO ═══════════ -->
+
+@if (isCartOpen()) {
+  <div class="cart-overlay" (click)="isCartOpen.set(false)"></div>
+}
+
+<div class="cart-drawer" [class.open]="isCartOpen()">
+
+  <!-- Header -->
+  <div class="cart-header">
+    <div class="header-left">
+      <div class="cart-icon-wrap">
+        <mat-icon>shopping_bag</mat-icon>
+      </div>
+      <div>
+        <h2>Tu Pedido</h2>
+        @if (cart.restaurantName()) {
+          <small class="restaurant-tag">
+            <mat-icon>store</mat-icon>{{ cart.restaurantName() }}
+          </small>
+        }
+      </div>
+    </div>
+    <button class="close-btn" (click)="isCartOpen.set(false)">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Barra de conteo -->
+  @if (cart.items().length > 0) {
+    <div class="items-bar">
+      <span class="items-badge">{{ cart.count() }}</span>
+      <span class="items-label">{{ cart.count() === 1 ? 'artículo' : 'artículos' }} en tu pedido</span>
+    </div>
+  }
+
+  <!-- Lista -->
+  <div class="cart-body">
+
+    @if (cart.items().length === 0) {
+      <div class="empty-cart">
+        <div class="empty-icon-wrap">
+          <mat-icon>lunch_dining</mat-icon>
+        </div>
+        <p class="empty-title">Tu carrito está vacío</p>
+        <small>Agrega platos desde el menú para comenzar</small>
+      </div>
+    }
+
+    @for (item of cart.items(); track item.id) {
+      <div class="cart-item">
+        <div class="item-thumb">
+          <mat-icon>restaurant</mat-icon>
+        </div>
+        <div class="item-details">
+          <p class="item-name">{{ item.name }}</p>
+          <span class="item-unit">Q{{ item.price | number:'1.2-2' }} c/u</span>
+          <div class="item-row">
+            <div class="qty-controls">
+              <button class="qty-btn" (click)="cart.decrementItem(item.id!)">
+                <mat-icon>remove</mat-icon>
+              </button>
+              <span class="qty-val">{{ item.quantity }}</span>
+              <button class="qty-btn" (click)="cart.incrementItem(item.id!)">
+                <mat-icon>add</mat-icon>
+              </button>
+            </div>
+            <span class="item-subtotal">Q{{ item.price * item.quantity | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <button class="delete-btn" (click)="cart.removeItem(item.id!)">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </div>
+    }
+
+  </div>
+
+  <!-- Footer -->
+  @if (cart.items().length > 0) {
+    <div class="cart-footer">
+
+      @if (orderError()) {
+        <div class="error-msg">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ orderError() }}</span>
+        </div>
+      }
+
+      <div class="summary-box">
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span>Q{{ cart.total() | number:'1.2-2' }}</span>
+        </div>
+        <div class="summary-row">
+          <span>Envío</span>
+          <span class="free-tag">Gratis</span>
+        </div>
+        <div class="summary-line"></div>
+        <div class="summary-row total-row">
+          <span>Total</span>
+          <span>Q{{ cart.total() | number:'1.2-2' }}</span>
+        </div>
+      </div>
+
+      <button class="confirm-btn" [disabled]="orderLoading()" (click)="confirmOrder()">
+        @if (orderLoading()) {
+          <mat-spinner diameter="20"></mat-spinner>
+          <span>Procesando...</span>
+        } @else {
+          <mat-icon>check_circle</mat-icon>
+          <span>Confirmar pedido · Q{{ cart.total() | number:'1.2-2' }}</span>
+        }
+      </button>
+
+      <button class="clear-btn" (click)="cart.clearCart()">
+        <mat-icon>delete_sweep</mat-icon>
+        Vaciar carrito
+      </button>
+
+    </div>
+  }
+
+</div>

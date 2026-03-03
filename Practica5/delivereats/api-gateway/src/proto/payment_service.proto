@@ -1,0 +1,49 @@
+// payment-service/src/proto/payment_service.proto
+syntax = "proto3";
+
+package payment;
+
+service PaymentService {
+  rpc ProcessPayment    (ProcessPaymentRequest) returns (PaymentResponse) {}
+  rpc GetPaymentByOrder (GetByOrderRequest)     returns (PaymentResponse) {}
+  rpc ApproveRefund     (ApproveRefundRequest)  returns (PaymentResponse) {}
+  rpc GetAllPayments    (EmptyRequest)          returns (PaymentsListResponse) {}
+}
+
+message ProcessPaymentRequest {
+  int32  orderId       = 1;
+  int32  userId        = 2;
+  double amount        = 3;
+  string method        = 4;  // CREDIT_CARD | DEBIT_CARD | DIGITAL_WALLET
+  string cardLastFour  = 5;
+  string cardHolder    = 6;
+  string walletAlias   = 7;
+}
+
+message GetByOrderRequest {
+  int32 orderId = 1;
+}
+
+message ApproveRefundRequest {
+  int32 orderId = 1;
+}
+
+message EmptyRequest {}
+
+message PaymentResponse {
+  int32  id              = 1;
+  int32  orderId         = 2;
+  int32  userId          = 3;
+  double amount          = 4;
+  string status          = 5;  // PENDING | COMPLETED | FAILED | REFUNDED
+  string method          = 6;
+  string cardLastFour    = 7;
+  string cardHolder      = 8;
+  string walletAlias     = 9;
+  string transactionCode = 10;
+  string createdAt       = 11;
+}
+
+message PaymentsListResponse {
+  repeated PaymentResponse payments = 1;
+}
