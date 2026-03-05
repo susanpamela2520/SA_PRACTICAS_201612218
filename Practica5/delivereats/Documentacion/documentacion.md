@@ -20,7 +20,7 @@
 
 ### Estrategia elegida: Base64 en PostgreSQL
 
-Las fotografías de evidencia de entrega se almacenan como texto en formato **Base64** directamente en la columna `deliveryPhoto` de la tabla `order` dentro de la base de datos `order-db`.
+Las fotografías de evidencia de entrega se almacenan como texto en formato **Base64** directamente en la columna deliveryPhoto de la tabla order dentro de la base de datos order-db.
 
 ### ¿Por qué Base64 en base de datos y no otras alternativas?
 
@@ -28,7 +28,7 @@ Se evaluaron tres estrategias principales:
 
 **Opción A — Base64 en base de datos (elegida)**
 
-La imagen se convierte a una cadena de texto Base64 en el frontend o en el servicio, y se persiste como un campo de texto en la tabla `order`. La recuperación es inmediata junto con el resto de los datos de la orden, sin peticiones adicionales a sistemas externos.
+La imagen se convierte a una cadena de texto Base64 en el frontend o en el servicio, y se persiste como un campo de texto en la tabla order. La recuperación es inmediata junto con el resto de los datos de la orden, sin peticiones adicionales a sistemas externos.
 
 *Ventajas:*
 - Implementación simple: no requiere configurar servicios externos (S3, GCS, etc.)
@@ -155,46 +155,21 @@ El fallback con Redis es fundamental para la resiliencia del sistema. Dado que l
 
 ---
 
-# 3. Documentación Técnica — Flujo de Reembolso
+# 3. Documentación del Flujo de Reembolso
 
 ## Descripción General
 
-El flujo de reembolso cubre el proceso completo desde que una entrega falla hasta que el administrador aprueba la devolución del dinero al cliente y el sistema actualiza el estado del pago a `REEMBOLSADO`.
+El flujo de reembolso cubre el proceso completo desde que una entrega falla hasta que el administrador aprueba la devolución del dinero al cliente y el sistema actualiza el estado del pago a REEMBOLSADO.
 
 ## Estados del Sistema Relevantes
 
 ```
-Estado de Entrega:   EN_CAMINO → CANCELADO (entrega fallida)
-Estado de Pago:      PAGADO → REEMBOLSADO (tras aprobación)
+Estado de Entrega:   EN_CAMINO => CANCELADO (entrega fallida)
+Estado de Pago:      PAGADO => REEMBOLSADO (tras aprobación)
 ```
 
 ## Diagrama del Flujo
-
-```
-Repartidor marca entrega como CANCELADO
-              │
-              ▼
-Delivery-Service actualiza estado de entrega a CANCELADO
-              │
-              ▼
-Panel del Administrador muestra orden con estado:
-  - Entrega: CANCELADO
-  - Pago: PAGADO
-  - Foto de evidencia visible
-              │
-              ▼
-Administrador revisa la situación y presiona
-"Aprobar Devolución de Dinero"
-              │
-              ▼
-API Gateway recibe petición → Payment-Service
-              │
-              ▼
-Payment-Service actualiza estado del pago a REEMBOLSADO
-              │
-              ▼
-Sistema confirma al administrador que el reembolso fue procesado
-```
+![Arquitectura Rembolso](img/Rembolso.png)
 
 ## Implementación por Capas
 
@@ -262,26 +237,19 @@ approveRefund(orderId: string): void {
 | Regla | Descripción |
 |-------|-------------|
 | Solo el ADMINISTRADOR puede aprobar | El endpoint valida el JWT y el rol antes de procesar |
-| Solo se reembolsan pagos en estado `PAGADO` | Si el pago ya fue reembolsado o no existe, el sistema retorna error |
+| Solo se reembolsan pagos en estado PAGADO | Si el pago ya fue reembolsado o no existe, el sistema retorna error |
 | El reembolso es simulado | No se conecta a una pasarela real; se actualiza el estado en la BD |
 | La foto de evidencia es consultable | El admin puede ver la foto del repartidor antes de decidir |
-| Trazabilidad | Se registra la fecha del reembolso en el campo `refundedAt` |
+| Trazabilidad | Se registra la fecha del reembolso en el campo refundedAt |
 
 ## Flujo de Estados del Pago
 
-```
-PENDIENTE → PAGADO → REEMBOLSADO
-                  ↘ (si entrega exitosa)
-                    Sin cambio (pago finalizado)
-```
+![Arquitectura Rembolso](img/EstadoPago.png)
 
 ## Consideraciones de Seguridad
 
-- El endpoint `/admin/payments/:orderId/refund` está protegido con **JWT Guard** y **RolesGuard**, validando que el usuario autenticado tenga el rol `ADMINISTRADOR`.
-- Un cliente o repartidor autenticado que intente acceder a este endpoint recibirá un error `403 Forbidden`.
-- Solo se puede transicionar de `PAGADO` a `REEMBOLSADO`, no de otros estados, evitando reembolsos duplicados.
+- El endpoint /admin/payments/:orderId/refund está protegido con **JWT Guard** y **RolesGuard**, validando que el usuario autenticado tenga el rol ADMINISTRADOR.
+- Un cliente o repartidor autenticado que intente acceder a este endpoint recibirá un error 403 Forbidden.
+- Solo se puede transicionar de PAGADO a REEMBOLSADO, no de otros estados, evitando reembolsos duplicados.
 
 ---
-
-*Documentación generada para Práctica 5 — Software Avanzado*  
-*Universidad de San Carlos de Guatemala — Ingeniería en Ciencias y Sistemas*
