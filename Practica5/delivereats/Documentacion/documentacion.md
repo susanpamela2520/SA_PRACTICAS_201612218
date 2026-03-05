@@ -1,146 +1,287 @@
-# Delivereats — Práctica 4: Documentación Fase 2
-**Software Avanzado — USAC 2026**
-
-Proyecto: **Delivereats — Fase 2**
-  
-Susan Pamela Herrera Monzon  
-Carné: 201612218  
+# Documentación Técnica — Práctica 5
 ---
 
-# 1. Actualización de Requerimientos
+# 1. Documentación para la Justificacion de Alamacenamiento
 
-## 1.1 Requerimientos Funcionales
+## ¿Qué se almacena y dónde?
 
-| ID | Módulo | Descripción |
-|----|--------|------------|
-| RF-01 | Autenticación | Registro con roles Cliente, Restaurante, Administrador |
-| RF-02 | Autenticación | Login con JWT firmado |
-| RF-03 | Autenticación | Validación de JWT en endpoints protegidos |
-| RF-04 | Restaurantes | CRUD restaurantes (Admin) |
-| RF-05 | Restaurantes | Listar restaurantes y menú |
-| RF-06 | Restaurantes | CRUD ítems menú (Rol Restaurante) |
-| RF-07 | Carrito | Agregar ítems al carrito |
-| RF-08 | Carrito | Mostrar subtotal y total |
-| RF-09 | Carrito | Modificar/eliminar ítems |
-| RF-10 | Órdenes | Crear orden y publicar evento en RabbitMQ |
-| RF-11 | Órdenes | Consultar historial de órdenes |
-| RF-12 | Órdenes | Actualizar estado de orden |
-| RF-13 | Mensajería | Order-Service publica order.created |
-| RF-14 | Mensajería | Restaurant-Service consume eventos |
-| RF-15 | Mensajería | Mensajes persistentes (durable:true) |
-| RF-16 | Notificaciones | Notification-Service consume eventos |
+| Acción | Base | ¿Porque se usa? (justificación) |
+|------|-------|---------------|
+| Órdenes e ítems | PostgreSQL (order-db) | Puede haber una orden con muchos pedidos o items, lo que requiere consistencia transaccional y soporte para JOINs. |
+| Pagos | PostgreSQL (payment-db) | Separado de order-db porque el microservicio de pagos es independiente y puede escalar por separado según la carga financiera. |
+| Usuarios | PostgreSQL (auth-db) | Datos relacionales con referencia |
+| Restaurantes y menú | PostgreSQL (restaurant-db) | Misma justificación que auth-db: datos estructurados con relaciones. |
+| Tasas de cambio | Redis | Caché en memoria ultra rápido y soporte de fallback ante fallos de la API externa. |
+| Fotografías de entrega | Base64 en PostgreSQL (order-db) | Columna deliveryPhoto en la tabla de órdenes. |
 
 ---
 
-## 1.2 Requerimientos No Funcionales
+## Decisión: Almacenamiento de Fotografías de Evidencia
 
-| ID | Categoría | Descripción |
-|----|-----------|------------|
-| RNF-01 | Disponibilidad | 2 réplicas por microservicio | 
-| RNF-02 | Escalabilidad | HPA independiente |
-| RNF-03 | Seguridad | JWT obligatorio + secrets seguros |
-| RNF-04 | Rendimiento | Respuesta < 500 ms |
-| RNF-05 | Mensajería | RabbitMQ durable |
-| RNF-06 | Portabilidad | Docker + Kubernetes |
-| RNF-07 | Mantenibilidad | CI/CD automático |
-| RNF-08 | Trazabilidad | Logs con correlationId |
-| RNF-09 | Separación | Database-per-service |
-| RNF-10 | Resiliencia | Rollout/Rollback sin downtime | 
+### Estrategia elegida: Base64 en PostgreSQL
 
----
-# 2. Diagrama de Arquitectura de Alto Nivel
+Las fotografías de evidencia de entrega se almacenan como texto en formato **Base64** directamente en la columna `deliveryPhoto` de la tabla `order` dentro de la base de datos `order-db`.
 
-![diagramaArquitectura](./img/DiagramaAltoNivelF2.png)
+### ¿Por qué Base64 en base de datos y no otras alternativas?
 
-Este diagrama presenta la arquitectura de Delivereats en la Fase 2, organizada por capas. El frontend (app-web) se comunica por HTTP con el API Gateway, el cual centraliza la seguridad (AuthGuard/RolesGuard) y enruta las solicitudes hacia los microservicios por gRPC. A diferencia de la Fase 1, se incorpora mensajería asíncrona mediante RabbitMQ: al crearse una orden, el Order-Service publica el evento order.created, que es consumido de manera independiente por el Restaurant-Service y el Notification-Service. Finalmente, se mantiene el patrón database-per-service, donde cada microservicio posee su propia base de datos PostgreSQL aislada para asegurar independencia y escalabilidad
+Se evaluaron tres estrategias principales:
 
----
-# 3. Diagrama Despliegue 
+**Opción A — Base64 en base de datos (elegida)**
 
-![diagramaDespliegue](./img/Despligue.png)
+La imagen se convierte a una cadena de texto Base64 en el frontend o en el servicio, y se persiste como un campo de texto en la tabla `order`. La recuperación es inmediata junto con el resto de los datos de la orden, sin peticiones adicionales a sistemas externos.
 
-Este diagrama presenta el despliegue físico/lógico de Delivereats en la Fase 2 tomando como base Kubernetes. El Cliente Web (app-web en React) consume el sistema a través del Ingress Controller, el cual expone únicamente el api-gateway hacia el exterior. El API Gateway enruta internamente las operaciones mediante gRPC hacia auth-service, restaurant-service y order-service. Para la comunicación asíncrona, el order-service publica eventos order.created al broker RabbitMQ (cola durable), los cuales son consumidos por restaurant-service y notification-service. Cada microservicio mantiene su base de datos PostgreSQL independiente (auth-db, restaurant-db y order-db), cumpliendo el enfoque database-per-service para aislamiento, escalabilidad y mantenimiento. 
+*Ventajas:*
+- Implementación simple: no requiere configurar servicios externos (S3, GCS, etc.)
+- Transaccional: la foto queda atómica junto con el resto del registro de la orden
+- Sin dependencias externas en tiempo de ejecución
+- Apropiada para un contexto académico donde la simplicidad operacional prima sobre la optimización de almacenamiento
 
----
-# 4. Diagrama Despliegue Kubernetes
+*Desventajas reconocidas:*
+- Las cadenas Base64 aumentan el tamaño de la BD aproximadamente un 33% respecto al binario original
+- No es óptima para imágenes de alta resolución en producción real
+- Consultas a la tabla se vuelven más pesadas si se selecciona la columna foto siempre
 
-![diagramaKubernetes](./img/kubernetes.png)
+**Opción B — File System local**
 
-Este diagrama describe el despliegue de Delivereats Fase 2 sobre Kubernetes dentro del namespace delivereats. El Ingress Controller expone únicamente al api-gateway hacia el exterior, mientras que el resto de microservicios permanecen como servicios internos (ClusterIP). Cada microservicio se ejecuta en su Deployment con réplicas (principalmente 2 para alta disponibilidad), y RabbitMQ se despliega como StatefulSet para conservar estado/persistencia. Además, la configuración se separa en ConfigMaps para valores no sensibles y Secrets para credenciales (DB), JWT y la URL de RabbitMQ, asegurando buenas prácticas de seguridad y portabilidad.
+Guardar el archivo en una carpeta dentro del servidor del microservicio. Se descartó porque en un entorno Docker/contenedores el sistema de archivos no es persistente entre reinicios de contenedor, lo que provocaría pérdida de imágenes.
 
----
-# 5. Diagrama Base de Datos 
+**Opción C — Cloud Bucket (AWS S3 / Google Cloud Storage)**
 
-![diagramaBase](./img/db.png)
+Almacenar la imagen en un servicio de almacenamiento de objetos en la nube y guardar únicamente la URL en la base de datos. Se descartó para esta práctica porque requiere configuración de credenciales de nube, se estan guardando los credidos para cuando se escale a la nube en el proyecto.
 
-Este diagrama representa el esquema de base de datos bajo el enfoque database-per-service: auth-db, restaurant-db y order-db. En auth-db se almacena el usuario autenticado, agregando isActive y createdAt como soporte de soft-delete y auditoría. En restaurant-db se gestionan restaurantes y menú, incorporando isAvailable para disponibilidad en tiempo real. En order-db se controla el ciclo de vida de la orden y sus ítems, añadiendo updatedAt para registrar cambios de estado y correlationId para trazabilidad de eventos publicados/consumidos en RabbitMQ. Las relaciones entre bases se interpretan como referencias lógicas (por IDs), manteniendo el desacoplamiento entre servicios.
+### Conclusión
+
+Para el contexto académico de esta práctica, **Base64 en PostgreSQL** es la opción más adecuada porque garantiza simplicidad de implementación, atomicidad de los datos y cero dependencias externas adicionales. En un ambiente de producción real, la recomendación sería migrar al patrón de Cloud Bucket con URL almacenada en BD.
 
 ---
-# 6. Diagrama Actividades 
 
-![diagramaActividades](./img/Actividades.png)
+# 2. Documentación Técnica y Guía de Implementación — FX-Service
 
-Este diagrama representa el flujo principal de la Fase 2 de Delivereats, organizado por carriles (swimlanes) para identificar responsabilidades por componente. El Cliente agrega ítems al carrito en el frontend y confirma la orden mediante POST /orders. El API Gateway aplica controles de seguridad con AuthGuard (validación JWT) y RolesGuard (rol Cliente); si falla, responde con 401 o 403. Si es válido, el Gateway invoca al Order-Service vía gRPC para crear la orden con estado PENDING, generar un correlationId y publicar el evento order.created. RabbitMQ encola el mensaje con persistencia, y los consumidores (Restaurant-Service y Notification-Service) procesan el evento de manera asíncrona, registrando confirmaciones/notificaciones. Finalmente, el Order-Service retorna el OrderResponse al Gateway y este responde al frontend con la confirmación de la orden
+## Descripción General
 
+El **FX-Service** (Foreign Exchange Service) es un microservicio NestJS responsable de proporcionar tasas de cambio de divisas en tiempo real al resto del sistema. Su función principal es convertir montos en Quetzales (GTQ) a otras monedas para que el usuario pueda visualizar el precio de su pedido en diferentes divisas.
 
-# Implementacion de Kubernets
+## Arquitectura del Servicio
+![Arquitectura FX-Service](img/Fx-Service.png)
 
-Implementacion de Kubernetes en el proyecto Fase 2
+## Tecnologías Utilizadas
 
-app-web (Frontend React)
-api-gateway
-auth-service
-restaurant-service
-order-service
-notification-service
-RabbitMQ
+| Tecnología | Rol |
+|------------|-----|
+| NestJS | Framework del microservicio |
+| Redis | Caché de tasas de cambio |
+| ioredis / @nestjs/cache-manager | Cliente Redis en NestJS |
+| ExchangeRate-API |Proveedor de tasas de cambio externas |
+| Docker |Contenedorización del servicio y Redis |
 
-Bases de datos independientes:
-    auth-db
-    restaurant-db
-    order-db
+## Configuración del Entorno
 
-
-## Pasos 
-
-### Paso 1
-Escribe esto en consola.
-```Javascript 
-kubectl create namespace delivereats
-```
-### Paso 2
-Con esto aparece el nombre "deliverearts"
-```javascript
-kubectl get ns
+```env
+# Variables de entorno del FX-Service
+REDIS_HOST=redis
+REDIS_PORT=6379
+EXCHANGE_API_KEY=<tu_api_key>
+EXCHANGE_API_URL=https://v6.exchangerate-api.com/v6
+CACHE_TTL=3600   # TTL en segundos (1 hora)
 ```
 
-### Paso 3
+## Implementación del Caché con Redis
 
-Todos los valores sensibles deben almacenarse como Secrets.
+### Lógica principal (fx.service.ts)
 
-* Secret de Base de Datos
+```typescript
+async getExchangeRate(from: string, to: string): Promise<number> {
+  const cacheKey = `fx:${from}:${to}`;
 
-```javascript
-kubectl create secret generic db-secrets \
-  --namespace delivereats \
-  --from-literal=DB_USER='postgres' \
-  --from-literal=DB_PASSWORD='TU_PASSWORD_AQUI'
+  // 1. Intentar leer de Redis
+  const cached = await this.redisClient.get(cacheKey);
+  if (cached) {
+    return parseFloat(cached);
+  }
+
+  // 2. Si no está en caché, llamar a la API externa
+  try {
+    const response = await axios.get(
+      `${process.env.EXCHANGE_API_URL}/${process.env.EXCHANGE_API_KEY}/pair/${from}/${to}`
+    );
+    const rate = response.data.conversion_rate;
+
+    // 3. Guardar en Redis con TTL de 1 hora
+    await this.redisClient.set(cacheKey, rate.toString(), 'EX', 3600);
+
+    return rate;
+
+  } catch (error) {
+    // 4. FALLBACK: Si la API falla, usar el último valor en Redis
+    const fallback = await this.redisClient.get(cacheKey);
+    if (fallback) {
+      console.warn('API externa falló, usando valor de caché como fallback');
+      return parseFloat(fallback);
+    }
+    throw new Error('No hay tasa de cambio disponible');
+  }
+}
 ```
 
-* Secret JWT
+## Flujo Completo de Conversión
 
-```javascript
-    kubectl create secret generic rabbitmq-secret \
-  --namespace delivereats \
-  --from-literal=RABBITMQ_URL='amqp://guest:guest@rabbitmq:5672'
+1. El frontend solicita al API Gateway la tasa de cambio GTQ → USD.
+2. El Gateway delega al FX-Service.
+3. El FX-Service consulta primero Redis con la clave `fx:GTQ:USD`.
+4. Si Redis tiene un valor vigente (dentro del TTL), lo retorna inmediatamente.
+5. Si Redis no tiene el valor o expiró, se realiza una petición HTTP a ExchangeRate-API.
+6. La respuesta de la API se almacena en Redis con un TTL de 1 hora y se retorna al cliente.
+7. Si la API externa falla (timeout, error 5xx), el servicio busca en Redis el último valor conocido y lo usa como fallback, garantizando disponibilidad del sistema incluso ante fallos externos.
+
+## Endpoint Expuesto
+
 ```
-```javascript
-  * Secret RabbitMQ
-  kubectl create secret generic rabbitmq-secret \
-  --namespace delivereats \
-  --from-literal=RABBITMQ_URL='amqp://guest:guest@rabbitmq:5672'
-  ```
-  Se puede verificar con el siguiente comando:
-```javascript
-kubectl get secrets -n delivereat
+GET /fx/rate?from=GTQ&to=USD
 ```
+
+**Respuesta exitosa:**
+```json
+{
+  "from": "GTQ",
+  "to": "USD",
+  "rate": 0.130138,
+  "source": "cache"  // o "api"
+}
+```
+
+## Estrategia de Fallback
+
+El fallback con Redis es fundamental para la resiliencia del sistema. Dado que las tasas de cambio no varían drasticamente de un momento a otro, usar el último valor conocido (aunque sea de hace algunas horas) es preferible a fallar la transacción completa. Este patrón se conoce como **Stale-While-Revalidate** y es una práctica estándar en sistemas distribuidos.
+
+---
+
+# 3. Documentación Técnica — Flujo de Reembolso
+
+## Descripción General
+
+El flujo de reembolso cubre el proceso completo desde que una entrega falla hasta que el administrador aprueba la devolución del dinero al cliente y el sistema actualiza el estado del pago a `REEMBOLSADO`.
+
+## Estados del Sistema Relevantes
+
+```
+Estado de Entrega:   EN_CAMINO → CANCELADO (entrega fallida)
+Estado de Pago:      PAGADO → REEMBOLSADO (tras aprobación)
+```
+
+## Diagrama del Flujo
+
+```
+Repartidor marca entrega como CANCELADO
+              │
+              ▼
+Delivery-Service actualiza estado de entrega a CANCELADO
+              │
+              ▼
+Panel del Administrador muestra orden con estado:
+  - Entrega: CANCELADO
+  - Pago: PAGADO
+  - Foto de evidencia visible
+              │
+              ▼
+Administrador revisa la situación y presiona
+"Aprobar Devolución de Dinero"
+              │
+              ▼
+API Gateway recibe petición → Payment-Service
+              │
+              ▼
+Payment-Service actualiza estado del pago a REEMBOLSADO
+              │
+              ▼
+Sistema confirma al administrador que el reembolso fue procesado
+```
+
+## Implementación por Capas
+
+### Delivery-Service — Marcar entrega como fallida
+
+Cuando el repartidor no puede completar la entrega, actualiza el estado a `CANCELADO`:
+
+```typescript
+// delivery.service.ts
+async updateDeliveryStatus(data: { delivery_id: string; status: string; reason: string }) {
+  const delivery = await this.deliveryRepo.findOne({ where: { id: data.delivery_id } });
+  delivery.status = data.status as DeliveryStatus;
+  if (data.reason) delivery.reason = data.reason;
+  await this.deliveryRepo.save(delivery);
+
+  return { success: true, message: `Estado actualizado a ${data.status}` };
+}
+```
+
+### Payment-Service — Procesar reembolso
+
+```typescript
+// payment.service.ts
+async approveRefund(orderId: string): Promise<Payment> {
+  const payment = await this.paymentRepo.findOne({ where: { orderId } });
+
+  if (!payment) throw new Error('Pago no encontrado');
+  if (payment.status !== 'PAGADO') {
+    throw new Error('Solo se pueden reembolsar pagos en estado PAGADO');
+  }
+
+  payment.status = 'REEMBOLSADO';
+  payment.refundedAt = new Date();
+  return await this.paymentRepo.save(payment);
+}
+```
+
+### API Gateway — Endpoint de aprobación
+
+```typescript
+// Ruta protegida, solo rol ADMINISTRADOR
+POST /admin/payments/:orderId/refund
+Authorization: Bearer <token_admin>
+```
+
+### Panel Administrativo (Frontend Angular)
+
+El administrador visualiza las órdenes con entrega cancelada y tiene disponible el botón de reembolso:
+
+```typescript
+// admin.component.ts
+approveRefund(orderId: string): void {
+  this.paymentService.approveRefund(orderId).subscribe({
+    next: () => {
+      this.notifySuccess('Reembolso aprobado correctamente');
+      this.loadOrders(); // recargar lista
+    },
+    error: (err) => this.notifyError(err.message)
+  });
+}
+```
+
+## Reglas de Negocio del Reembolso
+
+| Regla | Descripción |
+|-------|-------------|
+| Solo el ADMINISTRADOR puede aprobar | El endpoint valida el JWT y el rol antes de procesar |
+| Solo se reembolsan pagos en estado `PAGADO` | Si el pago ya fue reembolsado o no existe, el sistema retorna error |
+| El reembolso es simulado | No se conecta a una pasarela real; se actualiza el estado en la BD |
+| La foto de evidencia es consultable | El admin puede ver la foto del repartidor antes de decidir |
+| Trazabilidad | Se registra la fecha del reembolso en el campo `refundedAt` |
+
+## Flujo de Estados del Pago
+
+```
+PENDIENTE → PAGADO → REEMBOLSADO
+                  ↘ (si entrega exitosa)
+                    Sin cambio (pago finalizado)
+```
+
+## Consideraciones de Seguridad
+
+- El endpoint `/admin/payments/:orderId/refund` está protegido con **JWT Guard** y **RolesGuard**, validando que el usuario autenticado tenga el rol `ADMINISTRADOR`.
+- Un cliente o repartidor autenticado que intente acceder a este endpoint recibirá un error `403 Forbidden`.
+- Solo se puede transicionar de `PAGADO` a `REEMBOLSADO`, no de otros estados, evitando reembolsos duplicados.
+
+---
+
+*Documentación generada para Práctica 5 — Software Avanzado*  
+*Universidad de San Carlos de Guatemala — Ingeniería en Ciencias y Sistemas*

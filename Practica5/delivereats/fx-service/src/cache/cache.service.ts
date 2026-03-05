@@ -1,10 +1,3 @@
-// fx-service/src/cache/cache.service.ts
-// ============================================================
-// Maneja Redis:
-// - set_rate(): guarda tasa normal (TTL: 6 min) y fallback (24h)
-// - get_rate(): lee tasa del cache normal
-// - get_fallback_rate(): lee tasa del fallback cuando la API falla
-// ============================================================
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';

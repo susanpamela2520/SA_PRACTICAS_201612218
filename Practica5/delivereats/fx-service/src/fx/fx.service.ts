@@ -1,4 +1,4 @@
-// fx-service/src/fx/fx.service.ts — REEMPLAZAR
+
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { CacheService } from '../cache/cache.service';

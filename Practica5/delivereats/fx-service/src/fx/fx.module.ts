@@ -1,4 +1,4 @@
-// fx-service/src/fx/fx.module.ts
+
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { FxController } from './fx.controller';
