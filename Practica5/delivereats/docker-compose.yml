@@ -97,7 +97,9 @@ services:
       - delivereats-network
 
   restaurant-service:
-    image: pampam4188/delivereats-restaurant-service
+    build:                             
+      context: ./restaurant-service
+      dockerfile: Dockerfile
     container_name: restaurant_service_container
     ports:
       - "50052:50052"

@@ -18,11 +18,13 @@ export class RestaurantService {
     @InjectRepository(RestaurantOrder)
     private restaurantOrderRepo: Repository<RestaurantOrder>,
 
-    // Para publicar eventos order.accepted / order.rejected
     private readonly amqpConnection: AmqpConnection,
   ) {}
 
-  //  CRUD para el restaurante 
+  // ════════════════════════════════════════════════════════
+  //  CRUD RESTAURANTE
+  // ════════════════════════════════════════════════════════
+
   async createRestaurant(data: any): Promise<Restaurant> {
     const newRestaurant = this.restaurantRepo.create(data);
     return (await this.restaurantRepo.save(newRestaurant)) as unknown as Restaurant;
@@ -53,7 +55,9 @@ export class RestaurantService {
     };
   }
 
-  //  CRUD  para menu
+  // ════════════════════════════════════════════════════════
+  //  CRUD MENÚ
+  // ════════════════════════════════════════════════════════
 
   async createMenuItem(data: any): Promise<MenuItem> {
     const restaurant = await this.restaurantRepo.findOne({ where: { id: data.restaurantId } });
@@ -83,10 +87,10 @@ export class RestaurantService {
     };
   }
 
- 
+  // ════════════════════════════════════════════════════════
   //  GESTIÓN DE ÓRDENES ENTRANTES
-  // aqui se Obtienen todas las órdenes que llegaron a este restaurante.
-  
+  // ════════════════════════════════════════════════════════
+
   async getIncomingOrders(restaurantId: number): Promise<{ orders: RestaurantOrder[] }> {
     const orders = await this.restaurantOrderRepo.find({
       where: { restaurantId },
@@ -95,19 +99,11 @@ export class RestaurantService {
     return { orders };
   }
 
-  
-   // Restaurante ACEPTA la orden.
-   // Actualiza el estado 
-   // se va al orden.accept y ahi se actuaiza
-  
   async acceptOrder(data: { orderId: number; restaurantId: number }): Promise<any> {
     const order = await this.restaurantOrderRepo.findOne({
       where: { orderId: data.orderId, restaurantId: data.restaurantId },
     });
-
-    if (!order) {
-      throw new NotFoundException(`Orden #${data.orderId} no encontrada en este restaurante`);
-    }
+    if (!order) throw new NotFoundException(`Orden #${data.orderId} no encontrada`);
     if (order.status !== RestaurantOrderStatus.PENDING) {
       throw new Error(`La orden #${data.orderId} ya fue procesada (status: ${order.status})`);
     }
@@ -115,42 +111,27 @@ export class RestaurantService {
     order.status = RestaurantOrderStatus.ACCEPTED;
     await this.restaurantOrderRepo.save(order);
 
-    // Publicar evento para que order-service y notification-service reaccionen
-    await this.amqpConnection.publish(
-      'delivereats_exchange',
-      'order.accepted',
-      {
-        orderId: data.orderId,
-        restaurantId: data.restaurantId,
-        userId: order.userId,
-        total: Number(order.total),
-        timestamp: new Date().toISOString(),
-      },
-    );
+    await this.amqpConnection.publish('delivereats_exchange', 'order.accepted', {
+      orderId: data.orderId,
+      restaurantId: data.restaurantId,
+      userId: order.userId,
+      total: Number(order.total),
+      timestamp: new Date().toISOString(),
+    });
 
     return {
       success: true,
-      message: `Orden #${data.orderId} aceptada exitosamente`,
+      message: `Orden #${data.orderId} aceptada`,
       orderId: data.orderId,
       status: RestaurantOrderStatus.ACCEPTED,
     };
   }
 
- // Restaurante RECHAZA la orden.
-   // Actuzalia el estado a Rechazada 
-   // Publica 'order.rejected' order-service actualiza a fallida
-  async rejectOrder(data: {
-    orderId: number;
-    restaurantId: number;
-    reason?: string;
-  }): Promise<any> {
+  async rejectOrder(data: { orderId: number; restaurantId: number; reason?: string }): Promise<any> {
     const order = await this.restaurantOrderRepo.findOne({
       where: { orderId: data.orderId, restaurantId: data.restaurantId },
     });
-
-    if (!order) {
-      throw new NotFoundException(`Orden #${data.orderId} no encontrada en este restaurante`);
-    }
+    if (!order) throw new NotFoundException(`Orden #${data.orderId} no encontrada`);
     if (order.status !== RestaurantOrderStatus.PENDING) {
       throw new Error(`La orden #${data.orderId} ya fue procesada (status: ${order.status})`);
     }
@@ -159,18 +140,13 @@ export class RestaurantService {
     order.rejectionReason = data.reason || 'Rechazado por el restaurante';
     await this.restaurantOrderRepo.save(order);
 
-    // Publicar evento para que order-service y notification-service reaccionen
-    await this.amqpConnection.publish(
-      'delivereats_exchange',
-      'order.rejected',
-      {
-        orderId: data.orderId,
-        restaurantId: data.restaurantId,
-        userId: order.userId,
-        reason: order.rejectionReason,
-        timestamp: new Date().toISOString(),
-      },
-    );
+    await this.amqpConnection.publish('delivereats_exchange', 'order.rejected', {
+      orderId: data.orderId,
+      restaurantId: data.restaurantId,
+      userId: order.userId,
+      reason: order.rejectionReason,
+      timestamp: new Date().toISOString(),
+    });
 
     return {
       success: true,

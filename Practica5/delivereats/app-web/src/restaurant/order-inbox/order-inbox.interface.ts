@@ -1,3 +1,4 @@
+// src/restaurant/order-inbox/order-inbox.interface.ts
 export interface OrderItemSnapshot {
   menuItemId: number;
   quantity: number;
@@ -6,7 +7,7 @@ export interface OrderItemSnapshot {
 
 export interface RestaurantOrder {
   id: number;
-  orderId: number;        // ID en order-service
+  orderId: number;
   restaurantId: number;
   userId: number;
   total: number;

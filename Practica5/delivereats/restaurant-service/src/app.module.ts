@@ -1,15 +1,16 @@
+// restaurant-service/src/app.module.ts — REEMPLAZAR
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
 
-import { Restaurant } from './entities/restaurant.entity';
-import { MenuItem } from './entities/menu-item.entity';
-import { RestaurantOrder } from './entities/restaurant-order.entity';
+import { Restaurant } from './restaurant/entities/restaurant.entity';
+import { MenuItem } from './restaurant/entities/menu-item.entity';
+import { RestaurantOrder } from './restaurant/entities/restaurant-order.entity';
 
-import { RestaurantService } from './restaurant.service';
-import { RestaurantController } from './restaurant.controller';
-import { OrderEventsConsumer } from './order-events.consumer';
+import { RestaurantService } from './restaurant/restaurant.service';
+import { RestaurantController } from './restaurant/restaurant.controller';
+import { OrderEventsConsumer } from './order-event.consumer';
 
 @Module({
   imports: [
@@ -24,25 +25,19 @@ import { OrderEventsConsumer } from './order-events.consumer';
         username: config.get('DB_USER'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME_REST'),
-        entities: [Restaurant, MenuItem, RestaurantOrder],  // aqui se agrega RestaurantOrder para que se cree la tabla en la base de datos
+        entities: [Restaurant, MenuItem, RestaurantOrder],
         synchronize: true,
       }),
       inject: [ConfigService],
     }),
 
-    // Registrar las 3 entidades para que se coloque la data
-    TypeOrmModule.forFeature([Restaurant, MenuItem, RestaurantOrder]),  // ← Agregar RestaurantOrder
+    TypeOrmModule.forFeature([Restaurant, MenuItem, RestaurantOrder]),
 
-    // RabbitMQ, consumen los eventos
-    RabbitMQModule.forRootAsync(RabbitMQModule, {
+    // ← Un solo argumento, sin RabbitMQModule como primer param
+    RabbitMQModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
-        exchanges: [
-          {
-            name: 'delivereats_exchange',
-            type: 'direct',
-          },
-        ],
+        exchanges: [{ name: 'delivereats_exchange', type: 'direct' }],
         uri: config.get<string>('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672'),
         connectionInitOptions: { wait: false },
       }),

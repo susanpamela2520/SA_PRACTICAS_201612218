@@ -2,18 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RestaurantOrder, RestaurantOrderStatus } from './entities/restaurant-order.entity';
+import { RestaurantOrder, RestaurantOrderStatus } from './restaurant/entities/restaurant-order.entity';
 
 interface OrderCreatedEvent {
   orderId: number;
   restaurantId: number;
   userId: number;
   total: number;
-  items: {
-    menuItemId: number;
-    quantity: number;
-    price: number;
-  }[];
+  items: { menuItemId: number; quantity: number; price: number }[];
   correlationId: string;
   timestamp: string;
 }
@@ -67,7 +63,3 @@ export class OrderEventsConsumer {
     this.logger.log('─'.repeat(55));
   }
 }
-
-//Que hace este consumer?
-// Consume el evento order.created desde RabbitMQ y guarda la orden
-// en la BD propia del restaurante para que aparezca en la bandeja.
