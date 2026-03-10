@@ -1,4 +1,4 @@
-// payment-service/src/payment/entities/payment.entity.ts
+
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 export enum PaymentStatus {

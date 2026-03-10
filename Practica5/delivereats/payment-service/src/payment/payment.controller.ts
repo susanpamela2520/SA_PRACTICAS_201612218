@@ -1,4 +1,4 @@
-// payment-service/src/payment/payment.controller.ts
+
 import { Controller } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './payment.service';
