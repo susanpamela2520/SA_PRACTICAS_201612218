@@ -25,9 +25,12 @@ import { OrderItem } from './order/entities/order-item.entity';
 
     // Aqui se implemnta la cola de RabbitMQ: para publicar order.created y consumir
     // que se acepte o rechace la orden
+
     RabbitMQModule.forRootAsync(RabbitMQModule, {
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
+        
+        // Aqui se envian los mensajes a la cola
         exchanges: [
           {
             name: 'delivereats_exchange',
