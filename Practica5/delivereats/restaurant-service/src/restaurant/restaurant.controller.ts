@@ -1,3 +1,4 @@
+// restaurant-service/src/restaurant.controller.ts
 import { Controller } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
 import { RestaurantService } from './restaurant.service';
@@ -6,7 +7,9 @@ import { RestaurantService } from './restaurant.service';
 export class RestaurantController {
   constructor(private readonly restaurantService: RestaurantService) {}
 
-  // --- RESTAURANTES ---
+ 
+  //  CRUD para RESTAURANTES
+
   @GrpcMethod('RestaurantService', 'CreateRestaurant')
   createRestaurant(data: any) {
     return this.restaurantService.createRestaurant(data);
@@ -32,7 +35,8 @@ export class RestaurantController {
     return this.restaurantService.deleteRestaurant(data.id);
   }
 
-  // --- MENÚ ---
+  //  CRUD  para menu
+ 
   @GrpcMethod('RestaurantService', 'CreateMenuItem')
   createMenuItem(data: any) {
     return this.restaurantService.createMenuItem(data);
@@ -51,5 +55,31 @@ export class RestaurantController {
   @GrpcMethod('RestaurantService', 'DeleteMenuItem')
   deleteMenuItem(data: { id: number }) {
     return this.restaurantService.deleteMenuItem(data.id);
+  }
+ 
+// Gestion para las ordenes 
+// El restaurante recibe las ordenes entrantes y las llamada desde
+// elfrontend por medio del api-gateway
+  
+  @GrpcMethod('RestaurantService', 'GetIncomingOrders')
+  getIncomingOrders(data: { restaurantId: number }) {
+    return this.restaurantService.getIncomingOrders(data.restaurantId);
+  }
+
+  // Restaurante Acepta la orden.
+  // actualiza de aceptada 
+  //publica order.accepted
+  @GrpcMethod('RestaurantService', 'AcceptOrder')
+  acceptOrder(data: { orderId: number; restaurantId: number }) {
+    return this.restaurantService.acceptOrder(data);
+  }
+
+  // restaurante rechaza la orden 
+  // actualiza 
+  // publica en order.rejected
+  
+  @GrpcMethod('RestaurantService', 'RejectOrder')
+  rejectOrder(data: { orderId: number; restaurantId: number; reason?: string }) {
+    return this.restaurantService.rejectOrder(data);
   }
 }
