@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import { randomUUID } from 'crypto';
 import { Order, PaymentStatus } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 
@@ -9,14 +11,17 @@ export class OrderService {
   constructor(
     @InjectRepository(Order)
     private orderRepo: Repository<Order>,
+
+    // Aqui se usa el AmqpConnection para publicar eventos
+    private readonly amqpConnection: AmqpConnection,
   ) {}
 
-  // ── 1. Crear orden ────────────────────────────────────────
+ //Crear orden y se publica en RabbitMQ
   async createOrder(data: any): Promise<Order> {
     const { userId, restaurantId, items } = data;
 
     let totalAmount = 0;
-    const orderItems = items.map((item) => {
+    const orderItems = items.map((item: any) => {
       totalAmount += item.price * item.quantity;
       return {
         menuItemId: item.menuItemId,
@@ -33,10 +38,29 @@ export class OrderService {
       items: orderItems,
     });
 
-    return await this.orderRepo.save(newOrder);
+    const savedOrder = await this.orderRepo.save(newOrder);
+
+    //Publicar evento order.created a RabbitMQ 
+    // donde se conecta esta parte en 
+    // El restaurant-service y el notification-service, para que se escuche esta cola
+    await this.amqpConnection.publish(
+      'delivereats_exchange',
+      'order.created',
+      {
+        orderId: savedOrder.id,
+        restaurantId: savedOrder.restaurantId,
+        userId: savedOrder.userId,
+        total: Number(savedOrder.total),
+        items: orderItems,
+        correlationId: randomUUID(),
+        timestamp: new Date().toISOString(),
+      },
+    );
+
+    return savedOrder;
   }
 
-  // ── 2. Obtener orden por ID ───────────────────────────────
+  // Obtener orden por ID 
   async getOrder(id: number): Promise<Order> {
     const order = await this.orderRepo.findOne({
       where: { id },
@@ -46,7 +70,7 @@ export class OrderService {
     return order;
   }
 
-  // ── 3. Historial de órdenes del usuario ──────────────────
+  // Historial de órdenes del usuario 
   async getOrdersByUser(userId: number): Promise<{ orders: Order[] }> {
     const orders = await this.orderRepo.find({
       where: { userId },
@@ -56,8 +80,7 @@ export class OrderService {
     return { orders };
   }
 
-  // ── 4. Actualizar estado ──────────────────────────────────
-  // MODIFICADO: ahora puede recibir foto y razón de fallo
+  // Actualizar estado de la orden 
   async updateOrderStatus(data: {
     id: number;
     status: string;
@@ -65,31 +88,24 @@ export class OrderService {
   }): Promise<Order> {
     const order = await this.getOrder(data.id);
     order.status = data.status;
-
     if (data.deliveryFailedReason) {
       order.deliveryFailedReason = data.deliveryFailedReason;
     }
-
     return await this.orderRepo.save(order);
   }
 
-  // ── 5. NUEVO: Repartidor sube foto de entrega ─────────────
-  // Se llama al marcar el pedido como DELIVERED
-  // La foto viene como Base64 string
+  // Repartidor sube foto de entrega y se puedeo poner estado de entregado
   async uploadDeliveryPhoto(data: {
     orderId: number;
     photoBase64: string;
   }): Promise<Order> {
     const order = await this.getOrder(data.orderId);
-
     order.deliveryPhoto = data.photoBase64;
     order.status = 'DELIVERED';
-
     return await this.orderRepo.save(order);
   }
 
-  // ── 6. NUEVO: Actualizar estado de pago ───────────────────
-  // Lo llama el payment-service después de procesar
+  // ── 6. Actualizar estado de pago
   async updatePaymentStatus(data: {
     orderId: number;
     paymentStatus: string;
@@ -99,7 +115,7 @@ export class OrderService {
     return await this.orderRepo.save(order);
   }
 
-  // ── 7. NUEVO: Órdenes por restaurante ────────────────────
+  // Órdenes por restaurante 
   async getOrdersByRestaurant(restaurantId: number): Promise<{ orders: Order[] }> {
     const orders = await this.orderRepo.find({
       where: { restaurantId },
@@ -109,7 +125,7 @@ export class OrderService {
     return { orders };
   }
 
-  // ── 8. NUEVO: Órdenes finalizadas/fallidas (para admin) ───
+  // Órdenes finalizadas/fallidas (solo para admin) 
   async getFinishedOrders(): Promise<{ orders: Order[] }> {
     const orders = await this.orderRepo
       .createQueryBuilder('order')
@@ -119,7 +135,6 @@ export class OrderService {
       })
       .orderBy('order.createdAt', 'DESC')
       .getMany();
-
     return { orders };
   }
 }
