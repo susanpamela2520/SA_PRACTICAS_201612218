@@ -1,0 +1,303 @@
+// src/restaurant/order-inbox/order-inbox.component.scss
+
+// ── Variables ──────────────────────────────────────────────
+$primary:    #ff6b35;
+$success:    #2e7d32;
+$warn:       #e53935;
+$pending-bg: #fff8e1;
+$pending-border: #ffb300;
+$radius:     12px;
+
+// ── Contenedor principal ───────────────────────────────────
+.inbox-container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+// ── Header ─────────────────────────────────────────────────
+.inbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+      color: #212121;
+    }
+    small { color: #757575; font-size: 13px; }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.pending-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: $pending-border;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  animation: pulse 1.5s infinite;
+
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+
+// ── Tabs ───────────────────────────────────────────────────
+.tab-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 24px;
+  background: #fff;
+  color: #616161;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+
+  &:hover { border-color: $primary; color: $primary; }
+
+  &.active {
+    background: $primary;
+    border-color: $primary;
+    color: #fff;
+  }
+}
+
+.tab-count {
+  background: #fff;
+  color: $primary;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// ── Loading ────────────────────────────────────────────────
+.loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 60px 0;
+  color: #757575;
+}
+
+// ── Ícono spinner ──────────────────────────────────────────
+.spinning {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+// ── Lista de órdenes ───────────────────────────────────────
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// ── Tarjeta de orden ───────────────────────────────────────
+.order-card {
+  border-radius: $radius;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+
+  &:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+
+  &.pending {
+    border-left: 4px solid $pending-border;
+    background: $pending-bg;
+  }
+}
+
+.order-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 0;
+}
+
+.order-id-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .order-icon { color: $primary; }
+
+  .order-number {
+    font-size: 16px;
+    font-weight: 700;
+    color: #212121;
+    display: block;
+  }
+  .order-date {
+    font-size: 12px;
+    color: #757575;
+  }
+}
+
+// ── Badges de estado ───────────────────────────────────────
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+
+  &.status-pending  { background: #fff3e0; color: #e65100; }
+  &.status-accepted { background: #e8f5e9; color: $success; }
+  &.status-rejected { background: #ffebee; color: $warn;    }
+}
+
+// ── Contenido de la tarjeta ────────────────────────────────
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #424242;
+  margin-bottom: 12px;
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; color: #9e9e9e; }
+}
+
+.items-section {
+  background: rgba(255,255,255,0.6);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.items-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #616161;
+  margin: 0 0 8px;
+
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+}
+
+.items-list { display: flex; flex-direction: column; gap: 6px; }
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+
+  .item-qty   { color: $primary; font-weight: 700; min-width: 28px; }
+  .item-name  { flex: 1; color: #424242; }
+  .item-price { color: #212121; font-weight: 600; }
+}
+
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid #e0e0e0;
+  font-size: 15px;
+  font-weight: 600;
+
+  .total-amount { color: $primary; font-size: 18px; }
+}
+
+.rejection-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #ffebee;
+  border-radius: 8px;
+  font-size: 13px;
+  color: $warn;
+
+  mat-icon { font-size: 16px; width: 16px; height: 16px; margin-top: 2px; }
+}
+
+// ── Acciones ───────────────────────────────────────────────
+.order-actions {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.5);
+
+  button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+}
+
+// ── Estado vacío ───────────────────────────────────────────
+.empty-state {
+  text-align: center;
+  padding: 64px 24px;
+  color: #9e9e9e;
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+    color: #e0e0e0;
+  }
+  p    { font-size: 16px; margin: 0 0 8px; color: #757575; }
+  small { font-size: 13px; }
+}
+
+// ── Snackbars ──────────────────────────────────────────────
+::ng-deep .snack-success .mdc-snackbar__surface { background: $success !important; }
+::ng-deep .snack-error   .mdc-snackbar__surface { background: $warn    !important; }

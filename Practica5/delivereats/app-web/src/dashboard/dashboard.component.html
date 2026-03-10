@@ -1,3 +1,4 @@
+<!-- src/dashboard/dashboard.component.html — REEMPLAZAR COMPLETO -->
 <app-navbar></app-navbar>
 
 <div class="dashboard-container">
@@ -75,6 +76,7 @@
           <mat-divider></mat-divider>
 
           <mat-card-actions align="end">
+
             @if (role === "Administrador") {
               <button mat-button color="accent" (click)="editRestaurant(res)">
                 <mat-icon>edit</mat-icon> Editar
@@ -82,17 +84,29 @@
               <button mat-button color="warn" (click)="deleteRestaurant(res.id!)">
                 <mat-icon>delete</mat-icon> Eliminar
               </button>
+
             } @else if (role === "Vendedor" || role === "Restaurante") {
-              <button mat-flat-button color="primary"
-                [routerLink]="['/restaurant', res.id, 'manage-menu']" class="manage-btn">
+              <!-- ── Botón existente: Gestión del menú ── -->
+              <button mat-stroked-button color="primary"
+                [routerLink]="['/restaurant', res.id, 'manage-menu']"
+                class="manage-btn">
                 <mat-icon>restaurant_menu</mat-icon> Mi Menú
               </button>
+
+              <!-- ── NUEVO: Bandeja de órdenes entrantes ── -->
+              <button mat-flat-button color="primary"
+                [routerLink]="['/restaurant', res.id, 'orders']"
+                class="manage-btn">
+                <mat-icon>inbox</mat-icon> Órdenes
+              </button>
+
             } @else if (role === "Cliente") {
               <button mat-flat-button color="primary"
                 [routerLink]="['/order', res.id]" class="order-btn">
                 <mat-icon>shopping_bag</mat-icon> Ver Menú e Ir a Pedir
               </button>
             }
+
           </mat-card-actions>
         </mat-card>
       } @empty {

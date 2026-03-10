@@ -1,12 +1,11 @@
-// src/app/app.routes.ts — REEMPLAZAR
 import { Routes } from '@angular/router';
 import { AuthComponent } from '../auth/auth/auth.component';
 import { MenuComponent } from '../restaurant/menu/menu.component';
 import { OrderViewComponent } from '../restaurant/order-view/order-view.component';
-import { SharedModule } from '../shared/shared.module';
 
 export const routes: Routes = [
   { path: 'login', component: AuthComponent },
+
   {
     path: 'createAccount',
     loadComponent: () =>
@@ -17,7 +16,17 @@ export const routes: Routes = [
     loadComponent: () =>
       import('../dashboard/dashboard.component').then(m => m.DashboardComponent),
   },
+
+  //Restaurante 
   { path: 'restaurant/:id/manage-menu', component: MenuComponent },
+
+  {
+    path: 'restaurant/:restaurantId/orders',
+    loadComponent: () =>
+      import('../restaurant/order-inbox/order-inbox.component').then(m => m.OrderInboxComponent),
+  },
+
+  // Órdenes / cliente 
   { path: 'order/:id', component: OrderViewComponent },
   {
     path: 'order-success/:id',
@@ -29,15 +38,20 @@ export const routes: Routes = [
     loadComponent: () =>
       import('../order/payment/payment.component').then(m => m.PaymentComponent),
   },
+
+  // Repartidor
   {
     path: 'delivery/:orderId',
     loadComponent: () =>
       import('../order/delivery/delivery-photo.component').then(m => m.DeliveryPhotoComponent),
   },
+
+  //  Admin 
   {
     path: 'admin',
     loadComponent: () =>
       import('../admin/admin-panel.component').then(m => m.AdminPanelComponent),
   },
+
   { path: '**', redirectTo: 'login' },
 ];

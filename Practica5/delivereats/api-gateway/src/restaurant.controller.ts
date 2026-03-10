@@ -18,7 +18,6 @@ import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
 import { lastValueFrom } from 'rxjs';
 
-// Interfaz que coincide con tu .proto y el servicio
 interface RestaurantServiceClient {
   // Restaurantes
   createRestaurant(data: any): any;
@@ -26,12 +25,15 @@ interface RestaurantServiceClient {
   getRestaurant(data: any): any;
   updateRestaurant(data: any): any;
   deleteRestaurant(data: any): any;
-
-  // Menús
+  // Menú
   createMenuItem(data: any): any;
   getMenu(data: any): any;
   updateMenuItem(data: any): any;
   deleteMenuItem(data: any): any;
+  // ── NUEVO: Gestión de órdenes entrantes ──
+  getIncomingOrders(data: any): any;
+  acceptOrder(data: any): any;
+  rejectOrder(data: any): any;
 }
 
 @Controller('restaurants')
@@ -45,17 +47,15 @@ export class RestaurantController implements OnModuleInit {
       this.client.getService<RestaurantServiceClient>('RestaurantService');
   }
 
-  // ==========================================
-  // 👁️ READ (LEER) - PÚBLICOS
-  // ==========================================
+  // ══════════════════════════════════════════════════════════
+  //  READ - PÚBLICOS (sin auth)
+  // ══════════════════════════════════════════════════════════
 
-  // 1. Obtener todos los Restaurantes
   @Get()
   async getAll() {
     return this.restaurantService.getRestaurants({});
   }
 
-  // 2. Obtener un Restaurante por ID
   @Get(':id')
   async getOne(@Param('id') id: string) {
     try {
@@ -63,24 +63,19 @@ export class RestaurantController implements OnModuleInit {
         this.restaurantService.getRestaurant({ id: Number(id) }),
       );
     } catch (e) {
-      throw new HttpException(
-        'Restaurante no encontrado',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Restaurante no encontrado', HttpStatus.NOT_FOUND);
     }
   }
 
-  // 3. Obtener el menú de un Restaurante específico
   @Get(':id/menu')
   async getMenu(@Param('id') id: string) {
     return this.restaurantService.getMenu({ restaurantId: Number(id) });
   }
 
-  // ==========================================
-  // 🛠️ CRUD RestauranteS (SOLO ADMIN)
-  // ==========================================
+  // ══════════════════════════════════════════════════════════
+  //  CRUD RESTAURANTES (solo Administrador)
+  // ══════════════════════════════════════════════════════════
 
-  // 4. Crear Restaurante
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('Administrador')
@@ -88,7 +83,6 @@ export class RestaurantController implements OnModuleInit {
     return this.restaurantService.createRestaurant(body);
   }
 
-  // 5. Actualizar Restaurante
   @Put(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('Administrador')
@@ -96,7 +90,6 @@ export class RestaurantController implements OnModuleInit {
     return this.restaurantService.updateRestaurant({ ...body, id: Number(id) });
   }
 
-  // 6. Eliminar Restaurante
   @Delete(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('Administrador')
@@ -104,11 +97,10 @@ export class RestaurantController implements OnModuleInit {
     return this.restaurantService.deleteRestaurant({ id: Number(id) });
   }
 
-  // ==========================================
-  // 🍽️ CRUD MENÚ (SOLO ROL Restaurante)
-  // ==========================================
+  // ══════════════════════════════════════════════════════════
+  //  CRUD MENÚ (Restaurante / Vendedor)
+  // ══════════════════════════════════════════════════════════
 
-  // 7. Crear Plato en el Menú
   @Post(':id/menu')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('Restaurante', 'Vendedor')
@@ -119,22 +111,89 @@ export class RestaurantController implements OnModuleInit {
     });
   }
 
-  // 8. Actualizar Plato (Usando el ID del plato)
   @Put('menu/:itemId')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('Restaurante', 'Vendedor')
   async updateDish(@Param('itemId') itemId: string, @Body() body: any) {
-    return this.restaurantService.updateMenuItem({
-      ...body,
-      id: Number(itemId),
-    });
+    return this.restaurantService.updateMenuItem({ ...body, id: Number(itemId) });
   }
 
-  // 9. Eliminar Plato (Usando el ID del plato)
   @Delete('menu/:itemId')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('Restaurante', 'Vendedor')
   async deleteDish(@Param('itemId') itemId: string) {
     return this.restaurantService.deleteMenuItem({ id: Number(itemId) });
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  GESTIÓN DE ÓRDENES ENTRANTES — NUEVO
+  // ══════════════════════════════════════════════════════════
+
+  /**
+   * GET /restaurants/:restaurantId/orders
+   * El restaurante ve su bandeja de órdenes pendientes/procesadas.
+   */
+  @Get(':restaurantId/orders')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('Restaurante', 'Vendedor', 'Administrador')
+  async getIncomingOrders(@Param('restaurantId') restaurantId: string) {
+    return this.restaurantService.getIncomingOrders({
+      restaurantId: Number(restaurantId),
+    });
+  }
+
+  /**
+   * POST /restaurants/orders/:orderId/accept
+   * Body: { restaurantId: number }
+   * El restaurante acepta la orden → publica order.accepted a RabbitMQ.
+   */
+  @Post('orders/:orderId/accept')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('Restaurante', 'Vendedor')
+  async acceptOrder(
+    @Param('orderId') orderId: string,
+    @Body() body: { restaurantId: number },
+  ) {
+    try {
+      return await lastValueFrom(
+        this.restaurantService.acceptOrder({
+          orderId: Number(orderId),
+          restaurantId: body.restaurantId,
+        }),
+      );
+    } catch (e) {
+      throw new HttpException(
+        e.message || 'Error al aceptar la orden',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /**
+   * POST /restaurants/orders/:orderId/reject
+   * Body: { restaurantId: number, reason?: string }
+   * El restaurante rechaza la orden → publica order.rejected a RabbitMQ.
+   */
+  @Post('orders/:orderId/reject')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('Restaurante', 'Vendedor')
+  async rejectOrder(
+    @Param('orderId') orderId: string,
+    @Body() body: { restaurantId: number; reason?: string },
+  ) {
+    try {
+      return await lastValueFrom(
+        this.restaurantService.rejectOrder({
+          orderId: Number(orderId),
+          restaurantId: body.restaurantId,
+          reason: body.reason || 'Rechazado por el restaurante',
+        }),
+      );
+    } catch (e) {
+      throw new HttpException(
+        e.message || 'Error al rechazar la orden',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 }

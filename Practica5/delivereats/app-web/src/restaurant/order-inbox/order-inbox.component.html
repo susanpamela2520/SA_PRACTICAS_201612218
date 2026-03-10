@@ -1,0 +1,186 @@
+<!-- src/restaurant/order-inbox/order-inbox.component.html -->
+
+<div class="inbox-container">
+
+  <!-- ── Header ─────────────────────────────────────────── -->
+  <header class="inbox-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/dashboard">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div>
+        <h1>Bandeja de Órdenes</h1>
+        <small>Restaurante #{{ restaurantId() }}</small>
+      </div>
+    </div>
+
+    <div class="header-right">
+      @if (pendingCount > 0) {
+        <span class="pending-badge">
+          <mat-icon>notifications_active</mat-icon>
+          {{ pendingCount }} pendiente{{ pendingCount > 1 ? 's' : '' }}
+        </span>
+      }
+      <button mat-icon-button (click)="loadOrders()" matTooltip="Actualizar">
+        <mat-icon [class.spinning]="loading()">refresh</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Tabs de filtro ─────────────────────────────────── -->
+  <div class="tab-bar">
+    <button
+      class="tab-btn"
+      [class.active]="activeTab() === 'PENDING'"
+      (click)="activeTab.set('PENDING')"
+    >
+      <mat-icon>pending</mat-icon> Pendientes
+      @if (pendingCount > 0) { <span class="tab-count">{{ pendingCount }}</span> }
+    </button>
+    <button
+      class="tab-btn"
+      [class.active]="activeTab() === 'ACCEPTED'"
+      (click)="activeTab.set('ACCEPTED')"
+    >
+      <mat-icon>check_circle</mat-icon> Aceptadas
+    </button>
+    <button
+      class="tab-btn"
+      [class.active]="activeTab() === 'REJECTED'"
+      (click)="activeTab.set('REJECTED')"
+    >
+      <mat-icon>cancel</mat-icon> Rechazadas
+    </button>
+    <button
+      class="tab-btn"
+      [class.active]="activeTab() === 'ALL'"
+      (click)="activeTab.set('ALL')"
+    >
+      <mat-icon>list</mat-icon> Todas
+    </button>
+  </div>
+
+  <!-- ── Loading ────────────────────────────────────────── -->
+  @if (loading() && orders().length === 0) {
+    <div class="loading-wrap">
+      <mat-spinner diameter="48"></mat-spinner>
+      <p>Cargando órdenes...</p>
+    </div>
+  }
+
+  <!-- ── Lista de órdenes ───────────────────────────────── -->
+  <div class="orders-list">
+
+    @for (order of filteredOrders; track order.id) {
+      <mat-card class="order-card" [class.pending]="order.status === 'PENDING'">
+
+        <!-- Cabecera de la tarjeta -->
+        <mat-card-header>
+          <div class="order-card-header">
+            <div class="order-id-section">
+              <mat-icon class="order-icon">receipt_long</mat-icon>
+              <div>
+                <span class="order-number">Orden #{{ order.orderId }}</span>
+                <small class="order-date">{{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</small>
+              </div>
+            </div>
+
+            <!-- Badge de estado -->
+            <span class="status-badge" [ngClass]="'status-' + order.status.toLowerCase()">
+              @switch (order.status) {
+                @case ('PENDING')  { <mat-icon>hourglass_top</mat-icon>  Pendiente }
+                @case ('ACCEPTED') { <mat-icon>check_circle</mat-icon>   Aceptada  }
+                @case ('REJECTED') { <mat-icon>cancel</mat-icon>         Rechazada }
+              }
+            </span>
+          </div>
+        </mat-card-header>
+
+        <mat-card-content>
+
+          <!-- Info del cliente -->
+          <div class="info-row">
+            <mat-icon>person</mat-icon>
+            <span>Cliente ID: <strong>{{ order.userId }}</strong></span>
+          </div>
+
+          <!-- Items del pedido -->
+          <div class="items-section">
+            <p class="items-title">
+              <mat-icon>restaurant_menu</mat-icon> Detalle del pedido
+            </p>
+            <div class="items-list">
+              @for (item of order.items; track item.menuItemId) {
+                <div class="item-row">
+                  <span class="item-qty">{{ item.quantity }}x</span>
+                  <span class="item-name">Plato #{{ item.menuItemId }}</span>
+                  <span class="item-price">Q{{ (item.price * item.quantity) | number:'1.2-2' }}</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Total -->
+          <div class="total-row">
+            <span>Total de la orden</span>
+            <span class="total-amount">Q{{ orderTotal(order) | number:'1.2-2' }}</span>
+          </div>
+
+          <!-- Razón de rechazo (si aplica) -->
+          @if (order.status === 'REJECTED' && order.rejectionReason) {
+            <div class="rejection-reason">
+              <mat-icon>info</mat-icon>
+              <span>Razón: {{ order.rejectionReason }}</span>
+            </div>
+          }
+
+        </mat-card-content>
+
+        <!-- Acciones (solo para órdenes PENDING) -->
+        @if (order.status === 'PENDING') {
+          <mat-card-actions class="order-actions">
+            <button
+              mat-flat-button
+              color="primary"
+              [disabled]="isProcessing(order.orderId)"
+              (click)="acceptOrder(order)"
+            >
+              @if (isProcessing(order.orderId)) {
+                <mat-spinner diameter="18"></mat-spinner>
+              } @else {
+                <mat-icon>check_circle</mat-icon>
+              }
+              Aceptar orden
+            </button>
+
+            <button
+              mat-stroked-button
+              color="warn"
+              [disabled]="isProcessing(order.orderId)"
+              (click)="rejectOrder(order)"
+            >
+              <mat-icon>cancel</mat-icon>
+              Rechazar
+            </button>
+          </mat-card-actions>
+        }
+
+      </mat-card>
+    }
+
+    <!-- Estado vacío -->
+    @if (!loading() && filteredOrders.length === 0) {
+      <div class="empty-state">
+        <mat-icon>inbox</mat-icon>
+        @switch (activeTab()) {
+          @case ('PENDING')  { <p>No hay órdenes pendientes.</p>  }
+          @case ('ACCEPTED') { <p>No hay órdenes aceptadas aún.</p> }
+          @case ('REJECTED') { <p>No hay órdenes rechazadas.</p>  }
+          @default           { <p>No hay órdenes registradas.</p> }
+        }
+        <small>Las órdenes nuevas aparecerán automáticamente cada 10 segundos.</small>
+      </div>
+    }
+
+  </div>
+</div>
