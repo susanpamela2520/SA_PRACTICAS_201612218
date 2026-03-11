@@ -1,10 +1,11 @@
+// restaurant-service/src/restaurant/restaurant.service.ts — REEMPLAZAR
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { Restaurant } from './entities/restaurant.entity';
 import { MenuItem } from './entities/menu-item.entity';
-import { RestaurantOrder } from './entities/restaurant-order.entity';
+import { RestaurantOrder, RestaurantOrderStatus } from './entities/restaurant-order.entity';
 
 @Injectable()
 export class RestaurantService {
@@ -18,7 +19,7 @@ export class RestaurantService {
     private readonly amqpConnection: AmqpConnection,
   ) {}
 
-  // CRUD para restaurante 
+  // --- CRUD RESTAURANTE ---
 
   async createRestaurant(data: any): Promise<Restaurant> {
     const newRestaurant = this.restaurantRepo.create(data);
@@ -50,7 +51,7 @@ export class RestaurantService {
     };
   }
 
-  // Listado con filtros y busquedas
+  // --- FILTROS Y BÚSQUEDA ---
 
   async getFilteredRestaurants(filters: {
     category?: string;
@@ -60,26 +61,22 @@ export class RestaurantService {
   }): Promise<{ restaurants: Restaurant[] }> {
     const qb = this.restaurantRepo.createQueryBuilder('r');
 
-    // Filtro por tipo de comida/categoría
     if (filters.category && filters.category.trim() !== '') {
       qb.andWhere('LOWER(r.category) LIKE LOWER(:category)', {
         category: `%${filters.category}%`,
       });
     }
 
-    // Filtro por búsqueda de nombre
     if (filters.search && filters.search.trim() !== '') {
       qb.andWhere('LOWER(r.name) LIKE LOWER(:search)', {
         search: `%${filters.search}%`,
       });
     }
 
-    // Filtro solo con promoción activa
     if (filters.onlyWithPromotion) {
       qb.andWhere('r.hasActivePromotion = true');
     }
 
-    // Ordenamiento dinámico
     if (filters.sortBy === 'nuevos') {
       qb.orderBy('r.createdAt', 'DESC');
     } else if (filters.sortBy === 'destacados') {
@@ -94,12 +91,11 @@ export class RestaurantService {
     return { restaurants };
   }
 
-  // Incrementar ventas cuando se acepta una orden
   async incrementSales(restaurantId: number): Promise<void> {
     await this.restaurantRepo.increment({ id: restaurantId }, 'totalSales', 1);
   }
 
-  // CRUD para el menu
+  // --- CRUD MENÚ ---
 
   async createMenuItem(data: any): Promise<MenuItem> {
     const restaurant = await this.restaurantRepo.findOne({ where: { id: data.restaurantId } });
@@ -129,7 +125,8 @@ export class RestaurantService {
     };
   }
 
-  //  ordenes entrantes y estados de la orden
+  // --- ÓRDENES ENTRANTES ---
+
   async getIncomingOrders(restaurantId: number): Promise<{ orders: RestaurantOrder[] }> {
     const orders = await this.restaurantOrderRepo.find({
       where: { restaurantId },
@@ -142,10 +139,9 @@ export class RestaurantService {
     const order = await this.restaurantOrderRepo.findOne({ where: { orderId } });
     if (!order) throw new NotFoundException(`Orden #${orderId} no encontrada`);
 
-    order.status = 'ACCEPTED';
+    order.status = RestaurantOrderStatus.ACCEPTED;  // ← enum correcto
     await this.restaurantOrderRepo.save(order);
 
-    // Incrementar ventas del restaurante
     await this.incrementSales(order.restaurantId);
 
     await this.amqpConnection.publish('delivereats_exchange', 'order.accepted', {
@@ -161,7 +157,7 @@ export class RestaurantService {
     const order = await this.restaurantOrderRepo.findOne({ where: { orderId } });
     if (!order) throw new NotFoundException(`Orden #${orderId} no encontrada`);
 
-    order.status = 'REJECTED';
+    order.status = RestaurantOrderStatus.REJECTED;  // ← enum correcto
     order.rejectionReason = reason;
     await this.restaurantOrderRepo.save(order);
 
