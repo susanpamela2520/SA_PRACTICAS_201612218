@@ -1,4 +1,5 @@
 import { HttpClient } from '@angular/common/http';
+import { HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import {
   Restaurant,
@@ -62,3 +63,22 @@ export class RestaurantService {
     return this.http.delete<any>(`${this.apiUrl}/menu/${itemId}`);
   }
 }
+
+
+ getFilteredRestaurants(filters: {
+    category?: string;
+    sortBy?: string;
+    onlyWithPromotion?: boolean;
+    search?: string;
+  }): Observable<{ restaurants: Restaurant[] }> {
+    const params = new HttpParams()
+      .set('category', filters.category || '')
+      .set('sortBy', filters.sortBy || '')
+      .set('onlyWithPromotion', String(filters.onlyWithPromotion || false))
+      .set('search', filters.search || '');
+
+    return this.http.get<{ restaurants: Restaurant[] }>(
+      `${this.apiUrl}/restaurants/filter`,
+      { params }
+    );
+  }

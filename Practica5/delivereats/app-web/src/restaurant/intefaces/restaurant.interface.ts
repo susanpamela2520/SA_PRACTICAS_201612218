@@ -5,6 +5,10 @@ export interface Restaurant {
   category: string;
   horario: string;
   calificacion?: string;
+  avgRating?: number;
+  totalSales?: number;
+  hasActivePromotion?: boolean;
+  createdAt?: string;
 }
 
 export interface RestaurantResponse {
@@ -15,4 +19,11 @@ export interface RestaurantResponse {
   category?: string;
   success?: boolean;
   message?: string;
+}
+
+export interface FilterParams {
+  category?: string;
+  sortBy?: string;
+  onlyWithPromotion?: boolean;
+  search?: string;
 }
