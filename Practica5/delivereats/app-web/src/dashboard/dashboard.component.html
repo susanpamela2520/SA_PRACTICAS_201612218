@@ -15,7 +15,7 @@
   </mat-toolbar>
 
   <div class="content">
-    <h1 class="title">Panel de Control</h1>
+        <h1 class="title">Panel de Control</h1>
     <p class="subtitle">Gestiona los restaurantes de la plataforma</p>
 
     <!-- BARRA DE FILTROS (solo para Cliente) -->
@@ -112,42 +112,55 @@
         <mat-card-content>
           <p><mat-icon class="info-icon">location_on</mat-icon> {{ r.address }}</p>
           <p><mat-icon class="info-icon">schedule</mat-icon> {{ r.horario }}</p>
-          <div class="rating-row" *ngIf="r.avgRating > 0">
-            <mat-icon class="star-icon">star</mat-icon>
-            <span>{{ r.avgRating | number:'1.1-1' }}</span>
-            <span class="sales-badge" *ngIf="r.totalSales > 0">{{ r.totalSales }} ventas</span>
+          <div class="rating-row" *ngIf="(r.avgRating || 0)> 0">
+           <mat-icon class="star-icon">star</mat-icon>
+            <span>{{ (r.avgRating || 0) | number:'1.1-1' }}</span>            <span class="sales-badge" *ngIf="(r.totalSales || 0) > 0">{{ r['totalSales'] }} ventas</span>
           </div>
         </mat-card-content>
 
         <mat-card-actions>
           <!-- Cliente: ir a pedir -->
           <button mat-raised-button color="primary" *ngIf="userRole === 'Cliente'"
-            (click)="goToMenu(r.id)">
+            (click)="goToMenu(r.id!)">
             <mat-icon>shopping_bag</mat-icon> Ver Menú e Ir a Pedir
           </button>
 
           <!-- Restaurante/Vendedor: menú + órdenes -->
           <ng-container *ngIf="userRole === 'Restaurante' || userRole === 'Vendedor'">
-            <button mat-raised-button color="primary" (click)="goToMenu(r.id)">
-              <mat-icon>restaurant_menu</mat-icon> Mi Menú
-            </button>
-            <button mat-raised-button color="accent" (click)="goToOrders(r.id)"
-              [matBadge]="pendingCounts[r.id] || null" matBadgeColor="warn">
-              <mat-icon>inbox</mat-icon> Órdenes
-            </button>
-          </ng-container>
+  <button mat-raised-button color="primary" (click)="goToMenu(r.id!)">
+    <mat-icon>restaurant_menu</mat-icon> Mi Menú
+  </button>
+  <button mat-raised-button color="accent" (click)="goToOrders(r.id!)"
+    [matBadge]="r.id ? pendingCounts[r.id] || null : null" matBadgeColor="warn">
+    <mat-icon>inbox</mat-icon> Órdenes
+  </button>
+  <button mat-raised-button (click)="router.navigate(['/restaurant', r.id, 'promotions'])">
+    <mat-icon>local_offer</mat-icon> Promociones
+  </button>
+  <button mat-raised-button (click)="router.navigate(['/restaurant', r.id, 'coupons'])">
+    <mat-icon>confirmation_number</mat-icon> Cupones
+  </button>
+</ng-container>
 
           <!-- Admin -->
-          <ng-container *ngIf="userRole === 'Administrador'">
-            <button mat-raised-button color="primary" (click)="goToMenu(r.id)">Ver Menú</button>
-            <button mat-icon-button color="warn" (click)="deleteRestaurant(r.id)" matTooltip="Eliminar">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </ng-container>
+         <ng-container *ngIf="userRole === 'Administrador'">
+  <button mat-raised-button color="primary" (click)="goToMenu(r.id!)">Ver Menú</button>
+  <button mat-icon-button color="warn" (click)="deleteRestaurant(r.id!)" matTooltip="Eliminar">
+    <mat-icon>delete</mat-icon>
+  </button>
+</ng-container>
         </mat-card-actions>
       </mat-card>
     </div>
-
+<div class="admin-quick-access" *ngIf="userRole === 'Administrador'">
+  <h3>Panel Administrativo</h3>
+  <button mat-raised-button color="primary" (click)="router.navigate(['/admin'])">
+    <mat-icon>receipt_long</mat-icon> Órdenes Finalizadas y Reembolsos
+  </button>
+  <button mat-raised-button color="accent" (click)="router.navigate(['/admin'])">
+    <mat-icon>confirmation_number</mat-icon> Aprobar Cupones
+  </button>
+</div>
     <!-- Botón crear restaurante (solo admin) -->
     <div class="fab-container" *ngIf="userRole === 'Administrador'">
       <button mat-fab color="primary" (click)="goToCreate()" matTooltip="Crear restaurante">

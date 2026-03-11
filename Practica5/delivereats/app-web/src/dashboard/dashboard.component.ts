@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,6 +8,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatToolbarModule } from '@angular/material/toolbar';
 import { RestaurantService } from '../restaurant/restaurant.service';
 import { Restaurant } from '../restaurant/intefaces/restaurant.interface';
 import { SharedModule } from '../shared/shared.module';
@@ -31,6 +33,7 @@ import { debounceTime, Subject } from 'rxjs';
     SharedModule, NavbarComponent, RouterLink, MatTooltipModule,
     FormsModule, MatFormFieldModule, MatInputModule, MatProgressSpinnerModule,
     MatSelectModule, MatSlideToggleModule, MatChipsModule, MatBadgeModule,
+    MatMenuModule, MatToolbarModule,
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
@@ -40,14 +43,13 @@ export class DashboardComponent implements OnInit {
   private restaurantService = inject(RestaurantService);
   private snackBar = inject(MatSnackBar);
   private authService = inject(AuthService);
-  private router = inject(Router);
+  public router = inject(Router);
 
   restaurants: Restaurant[] = [];
   filteredRestaurants: Restaurant[] = [];
   pendingCounts: Record<number, number> = {};
   loading = false;
 
-  // Filtros
   searchText = '';
   selectedCategory = '';
   selectedSort = '';
@@ -55,13 +57,18 @@ export class DashboardComponent implements OnInit {
 
   private filterSubject = new Subject<void>();
 
-  get userRole() { return this.authService.userRole(); }
+ get userRole() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return '';
+    return JSON.parse(atob(token.split('.')[1])).role || '';
+  } catch { return ''; }
+}
 
   ngOnInit(): void {
     if (this.userRole !== 'Repartidor') {
       this.loadRestaurants();
     }
-    // Debounce para búsqueda por texto
     this.filterSubject.pipe(debounceTime(300)).subscribe(() => this.executeFilter());
   }
 
@@ -77,17 +84,11 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  applyFilters() {
-    this.filterSubject.next();
-  }
+  applyFilters() { this.filterSubject.next(); }
 
   executeFilter() {
     const hasFilters = this.selectedCategory || this.selectedSort || this.onlyWithPromotion || this.searchText;
-
-    if (!hasFilters) {
-      this.filteredRestaurants = [...this.restaurants];
-      return;
-    }
+    if (!hasFilters) { this.filteredRestaurants = [...this.restaurants]; return; }
 
     this.loading = true;
     this.restaurantService.getFilteredRestaurants({
@@ -96,14 +97,8 @@ export class DashboardComponent implements OnInit {
       onlyWithPromotion: this.onlyWithPromotion,
       search: this.searchText,
     }).subscribe({
-      next: (res) => {
-        this.filteredRestaurants = res.restaurants || [];
-        this.loading = false;
-      },
-      error: () => {
-        this.showMsg('Error al filtrar restaurantes');
-        this.loading = false;
-      },
+      next: (res) => { this.filteredRestaurants = res.restaurants || []; this.loading = false; },
+      error: () => { this.showMsg('Error al filtrar'); this.loading = false; },
     });
   }
 
@@ -113,9 +108,7 @@ export class DashboardComponent implements OnInit {
 
   getSortLabel(): string {
     const labels: Record<string, string> = {
-      nuevos: '🆕 Nuevos',
-      destacados: '⭐ Destacados',
-      mejor_puntuados: '🏆 Mejor puntuados',
+      nuevos: '🆕 Nuevos', destacados: '⭐ Destacados', mejor_puntuados: '🏆 Mejor puntuados',
     };
     return labels[this.selectedSort] || this.selectedSort;
   }
@@ -129,20 +122,18 @@ export class DashboardComponent implements OnInit {
   }
 
   clearAllFilters() {
-    this.searchText = '';
-    this.selectedCategory = '';
-    this.selectedSort = '';
-    this.onlyWithPromotion = false;
+    this.searchText = ''; this.selectedCategory = '';
+    this.selectedSort = ''; this.onlyWithPromotion = false;
     this.filteredRestaurants = [...this.restaurants];
   }
 
-  goToMenu(restaurantId: number) {
-    this.router.navigate(['/menu', restaurantId]);
+  logout() {
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 
-  goToOrders(restaurantId: number) {
-    this.router.navigate(['/restaurant', restaurantId, 'orders']);
-  }
+  goToMenu(restaurantId: number) { this.router.navigate(['/menu', restaurantId]); }
+  goToOrders(restaurantId: number) { this.router.navigate(['/restaurant', restaurantId, 'orders']); }
 
   goToCreate() {
     const dialogRef = this.dialog.open(RestaurantFormComponent, { width: '400px', data: null });

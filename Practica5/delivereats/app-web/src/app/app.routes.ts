@@ -16,7 +16,11 @@ export const routes: Routes = [
     loadComponent: () =>
       import('../dashboard/dashboard.component').then(m => m.DashboardComponent),
   },
-  { path: 'menu/:id', component: MenuComponent },
+  {
+  path: 'menu/:id',
+  loadComponent: () =>
+    import('../restaurant/menu-catalog/menu-catalog.component').then(m => m.MenuCatalogComponent),
+  },
   { path: 'restaurant/:id/manage-menu', component: MenuComponent },
   { path: 'order/:id', component: OrderViewComponent },
   {

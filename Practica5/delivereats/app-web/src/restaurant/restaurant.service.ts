@@ -62,7 +62,6 @@ export class RestaurantService {
   deleteDish(itemId: number): Observable<any> {
     return this.http.delete<any>(`${this.apiUrl}/menu/${itemId}`);
   }
-}
 
 
  getFilteredRestaurants(filters: {
@@ -78,7 +77,8 @@ export class RestaurantService {
       .set('search', filters.search || '');
 
     return this.http.get<{ restaurants: Restaurant[] }>(
-      `${this.apiUrl}/restaurants/filter`,
+      `${this.apiUrl}/filter`,
       { params }
     );
   }
+}

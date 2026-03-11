@@ -1,5 +1,5 @@
-<!-- app-web/src/cart-drawer/cart-drawer.component.html — REEMPLAZAR -->
-<div class="cart-overlay" [class.open]="isOpen()" (click)="closed.emit()"></div>
+
+<div class="cart-overlay" *ngIf="isOpen()" (click)="closed.emit()"></div>
 
 <div class="cart-drawer" [class.open]="isOpen()">
   <div class="cart-header">
@@ -24,11 +24,11 @@
           <span class="item-price">Q{{ (item.price * item.quantity) | number:'1.2-2' }}</span>
         </div>
         <div class="item-controls">
-          <button mat-icon-button (click)="cart.removeItem(item.id)">
+          <button mat-icon-button (click)="cart.removeItem(item.id!)">
             <mat-icon>remove_circle_outline</mat-icon>
           </button>
           <span class="qty">{{ item.quantity }}</span>
-          <button mat-icon-button (click)="cart.addItem(item)">
+          <button mat-icon-button (click)="cart.incrementItem(item.id!)">
             <mat-icon>add_circle_outline</mat-icon>
           </button>
         </div>
