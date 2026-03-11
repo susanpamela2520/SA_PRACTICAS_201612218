@@ -7,9 +7,13 @@ import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
 import { Restaurant } from './restaurant/entities/restaurant.entity';
 import { MenuItem } from './restaurant/entities/menu-item.entity';
 import { RestaurantOrder } from './restaurant/entities/restaurant-order.entity';
+import { Promotion } from './restaurant/entities/promotion.entity';
+import { Coupon } from './restaurant/entities/coupon.entity';
 
 import { RestaurantController } from './restaurant/restaurant.controller';
 import { RestaurantService } from './restaurant/restaurant.service';
+import { PromotionCouponController } from './restaurant/promotion-coupon.controller';
+import { PromotionCouponService } from './restaurant/promotion-coupon.service';
 import { OrderEventsConsumer } from './order-event.consumer';
 
 @Module({
@@ -25,14 +29,13 @@ import { OrderEventsConsumer } from './order-event.consumer';
         username: config.get('DB_USER'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME_REST'),
-        entities: [Restaurant, MenuItem, RestaurantOrder],
+        entities: [Restaurant, MenuItem, RestaurantOrder, Promotion, Coupon],
         synchronize: true,
       }),
       inject: [ConfigService],
     }),
 
-    // Una sola instancia de RabbitMQ — global para toda la app
-    TypeOrmModule.forFeature([Restaurant, MenuItem, RestaurantOrder]),
+    TypeOrmModule.forFeature([Restaurant, MenuItem, RestaurantOrder, Promotion, Coupon]),
 
     RabbitMQModule.forRootAsync({
       imports: [ConfigModule],
@@ -44,8 +47,7 @@ import { OrderEventsConsumer } from './order-event.consumer';
       inject: [ConfigService],
     }),
   ],
-  // Todo en un solo módulo: controller, service y consumer juntos
-  controllers: [RestaurantController],
-  providers: [RestaurantService, OrderEventsConsumer],
+  controllers: [RestaurantController, PromotionCouponController],
+  providers: [RestaurantService, PromotionCouponService, OrderEventsConsumer],
 })
 export class AppModule {}

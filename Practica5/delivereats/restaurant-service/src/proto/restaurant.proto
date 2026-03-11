@@ -23,6 +23,20 @@ service RestaurantService {
 
   // --- FILTROS Y BÚSQUEDA ---
   rpc GetFilteredRestaurants (FilterRestaurantsRequest) returns (RestaurantListResponse) {}
+
+  // --- PROMOCIONES ---
+  rpc CreatePromotion (CreatePromotionRequest) returns (PromotionResponse) {}
+  rpc GetPromotionsByRestaurant (GetByRestaurantRequest) returns (PromotionListResponse) {}
+  rpc GetActivePromotions (GetByRestaurantRequest) returns (PromotionListResponse) {}
+  rpc DeletePromotion (DeleteByIdRequest) returns (DeleteResponse) {}
+
+  // --- CUPONES ---
+  rpc CreateCoupon (CreateCouponRequest) returns (CouponResponse) {}
+  rpc GetCouponsByRestaurant (GetByRestaurantRequest) returns (CouponListResponse) {}
+  rpc GetPendingCoupons (Empty) returns (CouponListResponse) {}
+  rpc ApproveCoupon (CouponActionRequest) returns (CouponResponse) {}
+  rpc RejectCoupon (RejectCouponRequest) returns (CouponResponse) {}
+  rpc ValidateCoupon (ValidateCouponRequest) returns (ValidateCouponResponse) {}
 }
 
 message Empty {}
@@ -32,7 +46,15 @@ message DeleteResponse {
   string message = 2;
 }
 
-// --- MENSAJES RESTAURANTE ---
+message DeleteByIdRequest {
+  int32 id = 1;
+}
+
+message GetByRestaurantRequest {
+  int32 restaurantId = 1;
+}
+
+// --- RESTAURANTE ---
 message CreateRestaurantRequest {
   string name = 1;
   string address = 2;
@@ -40,11 +62,7 @@ message CreateRestaurantRequest {
   string horario = 4;
   string calificacion = 5;
 }
-
-message GetRestaurantRequest {
-  int32 id = 1;
-}
-
+message GetRestaurantRequest { int32 id = 1; }
 message UpdateRestaurantRequest {
   int32 id = 1;
   string name = 2;
@@ -52,10 +70,7 @@ message UpdateRestaurantRequest {
   string category = 4;
   string horario = 5;
 }
-
-message DeleteRestaurantRequest {
-  int32 id = 1;
-}
+message DeleteRestaurantRequest { int32 id = 1; }
 
 message RestaurantResponse {
   int32 id = 1;
@@ -69,42 +84,33 @@ message RestaurantResponse {
   bool hasActivePromotion = 9;
   string createdAt = 10;
 }
-
 message RestaurantListResponse {
   repeated RestaurantResponse restaurants = 1;
 }
 
-// --- MENSAJES FILTROS ---
+// --- FILTROS ---
 message FilterRestaurantsRequest {
-  string category = 1;        // Tipo de comida: "Pizza", "Hamburguesas", etc.
-  string sortBy = 2;          // "nuevos" | "destacados" | "mejor_puntuados"
-  bool onlyWithPromotion = 3; // Solo con promoción activa
-  string search = 4;          // Búsqueda por nombre
+  string category = 1;
+  string sortBy = 2;
+  bool onlyWithPromotion = 3;
+  string search = 4;
 }
 
-// --- MENSAJES MENÚ ---
+// --- MENÚ ---
 message CreateMenuItemRequest {
   int32 restaurantId = 1;
   string name = 2;
   string description = 3;
   float price = 4;
 }
-
-message GetMenuRequest {
-  int32 restaurantId = 1;
-}
-
+message GetMenuRequest { int32 restaurantId = 1; }
 message UpdateMenuItemRequest {
   int32 id = 1;
   string name = 2;
   string description = 3;
   float price = 4;
 }
-
-message DeleteMenuItemRequest {
-  int32 id = 1;
-}
-
+message DeleteMenuItemRequest { int32 id = 1; }
 message MenuItemResponse {
   int32 id = 1;
   string name = 2;
@@ -112,22 +118,15 @@ message MenuItemResponse {
   float price = 4;
   int32 restaurantId = 5;
 }
+message MenuListResponse { repeated MenuItemResponse items = 1; }
 
-message MenuListResponse {
-  repeated MenuItemResponse items = 1;
-}
-
-// --- MENSAJES ÓRDENES ---
-message GetIncomingOrdersRequest {
-  int32 restaurantId = 1;
-}
-
+// --- ÓRDENES ---
+message GetIncomingOrdersRequest { int32 restaurantId = 1; }
 message RestaurantOrderItem {
   int32 menuItemId = 1;
   int32 quantity = 2;
   float price = 3;
 }
-
 message RestaurantOrderResponse {
   int32 id = 1;
   int32 orderId = 2;
@@ -139,21 +138,98 @@ message RestaurantOrderResponse {
   string createdAt = 8;
   repeated RestaurantOrderItem items = 9;
 }
-
 message RestaurantOrderListResponse {
   repeated RestaurantOrderResponse orders = 1;
 }
-
-message OrderActionRequest {
-  int32 orderId = 1;
-}
-
+message OrderActionRequest { int32 orderId = 1; }
 message RejectOrderRequest {
   int32 orderId = 1;
   string reason = 2;
 }
-
 message OrderActionResponse {
   bool success = 1;
   string message = 2;
+}
+
+// --- PROMOCIONES ---
+message CreatePromotionRequest {
+  int32 restaurantId = 1;
+  string title = 2;
+  string description = 3;
+  string type = 4;           // 'percentage' | 'combo'
+  float discountPercent = 5;
+  string comboDescription = 6;
+  float comboPrice = 7;
+  string startDate = 8;
+  string endDate = 9;
+}
+
+message PromotionResponse {
+  int32 id = 1;
+  int32 restaurantId = 2;
+  string title = 3;
+  string description = 4;
+  string type = 5;
+  float discountPercent = 6;
+  string comboDescription = 7;
+  float comboPrice = 8;
+  string startDate = 9;
+  string endDate = 10;
+  bool isActive = 11;
+  string createdAt = 12;
+}
+
+message PromotionListResponse {
+  repeated PromotionResponse promotions = 1;
+}
+
+// --- CUPONES ---
+message CreateCouponRequest {
+  int32 restaurantId = 1;
+  string code = 2;
+  float discountPercent = 3;
+  string expiresAt = 4;
+  int32 usageLimit = 5;
+}
+
+message CouponActionRequest {
+  int32 couponId = 1;
+}
+
+message RejectCouponRequest {
+  int32 couponId = 1;
+  string reason = 2;
+}
+
+message ValidateCouponRequest {
+  string code = 1;
+  int32 restaurantId = 2;
+  float orderTotal = 3;
+}
+
+message ValidateCouponResponse {
+  bool valid = 1;
+  string message = 2;
+  float discountPercent = 3;
+  float discountAmount = 4;
+  float finalTotal = 5;
+  int32 couponId = 6;
+}
+
+message CouponResponse {
+  int32 id = 1;
+  int32 restaurantId = 2;
+  string code = 3;
+  float discountPercent = 4;
+  string expiresAt = 5;
+  int32 usageLimit = 6;
+  int32 usageCount = 7;
+  string status = 8;
+  string rejectionReason = 9;
+  bool isActive = 10;
+  string createdAt = 11;
+}
+
+message CouponListResponse {
+  repeated CouponResponse coupons = 1;
 }

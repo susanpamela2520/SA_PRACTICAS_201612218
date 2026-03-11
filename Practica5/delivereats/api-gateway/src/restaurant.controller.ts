@@ -1,3 +1,4 @@
+// api-gateway/src/restaurant.controller.ts — REEMPLAZAR (versión final completa)
 import {
   Controller, Get, Post, Put, Delete,
   Body, Param, Inject, OnModuleInit,
@@ -10,19 +11,29 @@ import { Roles } from './roles.decorator';
 import { lastValueFrom } from 'rxjs';
 
 interface RestaurantServiceClient {
-  createRestaurant(data: any): any; // CRUD para restaurantes
+  createRestaurant(data: any): any;
   getRestaurants(data: any): any;
   getRestaurant(data: any): any;
   updateRestaurant(data: any): any;
   deleteRestaurant(data: any): any;
-  createMenuItem(data: any): any;   // CRUD para el menú
+  createMenuItem(data: any): any;
   getMenu(data: any): any;
-  updateMenuItem(data: any): any; 
-  deleteMenuItem(data: any): any; 
-  getIncomingOrders(data: any): any; //ordenes entrantes
-  acceptOrder(data: any): any;   //aceptar orden
-  rejectOrder(data: any): any;   //rechazar orden 
-  getFilteredRestaurants(data: any): any; //listado con filtros y busqueda
+  updateMenuItem(data: any): any;
+  deleteMenuItem(data: any): any;
+  getIncomingOrders(data: any): any;
+  acceptOrder(data: any): any;
+  rejectOrder(data: any): any;
+  getFilteredRestaurants(data: any): any;
+  createPromotion(data: any): any;
+  getPromotionsByRestaurant(data: any): any;
+  getActivePromotions(data: any): any;
+  deletePromotion(data: any): any;
+  createCoupon(data: any): any;
+  getCouponsByRestaurant(data: any): any;
+  getPendingCoupons(data: any): any;
+  approveCoupon(data: any): any;
+  rejectCoupon(data: any): any;
+  validateCoupon(data: any): any;
 }
 
 @Controller('restaurants')
@@ -35,14 +46,11 @@ export class RestaurantController implements OnModuleInit {
     this.restaurantService = this.client.getService<RestaurantServiceClient>('RestaurantService');
   }
 
-  // listado de restaurantes y detalles de un restaurante  
+  // Restaurantes disponibles para orden
 
   @Get()
-  async getAll() {
-    return this.restaurantService.getRestaurants({});
-  }
+  async getAll() { return this.restaurantService.getRestaurants({}); }
 
-  //va primero el filter para que no se confunda con el id
   @Get('filter')
   async getFiltered(
     @Query('category') category?: string,
@@ -50,14 +58,12 @@ export class RestaurantController implements OnModuleInit {
     @Query('onlyWithPromotion') onlyWithPromotion?: string,
     @Query('search') search?: string,
   ) {
-    return lastValueFrom(
-      this.restaurantService.getFilteredRestaurants({
-        category: category || '',
-        sortBy: sortBy || '',
-        onlyWithPromotion: onlyWithPromotion === 'true',
-        search: search || '',
-      }),
-    );
+    return lastValueFrom(this.restaurantService.getFilteredRestaurants({
+      category: category || '',
+      sortBy: sortBy || '',
+      onlyWithPromotion: onlyWithPromotion === 'true',
+      search: search || '',
+    }));
   }
 
   @Get(':restaurantId/orders')
@@ -69,9 +75,98 @@ export class RestaurantController implements OnModuleInit {
         this.restaurantService.getIncomingOrders({ restaurantId: Number(restaurantId) }),
       );
     } catch (e) {
-      throw new HttpException(e.message || 'Error al obtener órdenes', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(e.message || 'Error', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  // Promociones
+
+  // Activas (cliente lo mira antes de ordenar)
+  @Get(':restaurantId/promotions/active')
+  async getActivePromotions(@Param('restaurantId') restaurantId: string) {
+    return lastValueFrom(
+      this.restaurantService.getActivePromotions({ restaurantId: Number(restaurantId) }),
+    );
+  }
+
+  // Todas las del restaurante (para el vendedor gestionarlas)
+  @Get(':restaurantId/promotions')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('Restaurante', 'Vendedor')
+  async getPromotionsByRestaurant(@Param('restaurantId') restaurantId: string) {
+    return lastValueFrom(
+      this.restaurantService.getPromotionsByRestaurant({ restaurantId: Number(restaurantId) }),
+    );
+  }
+
+  @Post(':restaurantId/promotions')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('Restaurante', 'Vendedor')
+  async createPromotion(@Param('restaurantId') restaurantId: string, @Body() body: any) {
+    return lastValueFrom(
+      this.restaurantService.createPromotion({ ...body, restaurantId: Number(restaurantId) }),
+    );
+  }
+
+  @Delete('promotions/:id')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('Restaurante', 'Vendedor')
+  async deletePromotion(@Param('id') id: string) {
+    return lastValueFrom(this.restaurantService.deletePromotion({ id: Number(id) }));
+  }
+
+  // cupones 
+
+  // Pendientes de aprobación (solo Admin)
+  @Get('coupons/pending')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('Administrador')
+  async getPendingCoupons() {
+    return lastValueFrom(this.restaurantService.getPendingCoupons({}));
+  }
+
+  @Get(':restaurantId/coupons')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('Restaurante', 'Vendedor')
+  async getCouponsByRestaurant(@Param('restaurantId') restaurantId: string) {
+    return lastValueFrom(
+      this.restaurantService.getCouponsByRestaurant({ restaurantId: Number(restaurantId) }),
+    );
+  }
+
+  @Post(':restaurantId/coupons')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('Restaurante', 'Vendedor')
+  async createCoupon(@Param('restaurantId') restaurantId: string, @Body() body: any) {
+    return lastValueFrom(
+      this.restaurantService.createCoupon({ ...body, restaurantId: Number(restaurantId) }),
+    );
+  }
+
+  @Post('coupons/:couponId/approve')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('Administrador')
+  async approveCoupon(@Param('couponId') couponId: string) {
+    return lastValueFrom(this.restaurantService.approveCoupon({ couponId: Number(couponId) }));
+  }
+
+  @Post('coupons/:couponId/reject')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('Administrador')
+  async rejectCoupon(@Param('couponId') couponId: string, @Body() body: { reason: string }) {
+    return lastValueFrom(
+      this.restaurantService.rejectCoupon({ couponId: Number(couponId), reason: body.reason }),
+    );
+  }
+
+  // Validar cupón antes de que se cree la orden 
+  @Post('coupons/validate')
+  @UseGuards(AuthGuard)
+  async validateCoupon(@Body() body: { code: string; restaurantId: number; orderTotal: number }) {
+    return lastValueFrom(this.restaurantService.validateCoupon(body));
+  }
+
+  // CRUD para el restaurante para el administrador
 
   @Get(':id')
   async getOne(@Param('id') id: string) {
@@ -87,16 +182,10 @@ export class RestaurantController implements OnModuleInit {
     return this.restaurantService.getMenu({ restaurantId: Number(id) });
   }
 
- 
-  // CRUD para los restaurantes (SOLO ADMIN)
-  
-
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('Administrador')
-  async createRestaurant(@Body() body: any) {
-    return this.restaurantService.createRestaurant(body);
-  }
+  async createRestaurant(@Body() body: any) { return this.restaurantService.createRestaurant(body); }
 
   @Put(':id')
   @UseGuards(AuthGuard, RolesGuard)
@@ -112,9 +201,7 @@ export class RestaurantController implements OnModuleInit {
     return this.restaurantService.deleteRestaurant({ id: Number(id) });
   }
 
-
-  // CRUD para el menu en los  (roles de Restaurante/Vendedor)
- 
+  // CRUD para el menu de restaurente y vendedor 
 
   @Post(':id/menu')
   @UseGuards(AuthGuard, RolesGuard)
@@ -137,32 +224,21 @@ export class RestaurantController implements OnModuleInit {
     return this.restaurantService.deleteMenuItem({ id: Number(itemId) });
   }
 
- 
-  // ÓRDENES (RabbitMQ flow) (dispara flujo de eventos)
-  // cuando un restaurante acepta y rechaza la orden por endpoints
+  // ordenes 
+
   @Post('orders/:orderId/accept')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('Restaurante', 'Vendedor')
   async acceptOrder(@Param('orderId') orderId: string) {
-    try {
-      return await lastValueFrom(
-        this.restaurantService.acceptOrder({ orderId: Number(orderId) }),
-      );
-    } catch (e) {
-      throw new HttpException(e.message || 'Error al aceptar orden', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    return lastValueFrom(this.restaurantService.acceptOrder({ orderId: Number(orderId) }));
   }
 
   @Post('orders/:orderId/reject')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('Restaurante', 'Vendedor')
   async rejectOrder(@Param('orderId') orderId: string, @Body() body: { reason: string }) {
-    try {
-      return await lastValueFrom(
-        this.restaurantService.rejectOrder({ orderId: Number(orderId), reason: body.reason }),
-      );
-    } catch (e) {
-      throw new HttpException(e.message || 'Error al rechazar orden', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    return lastValueFrom(
+      this.restaurantService.rejectOrder({ orderId: Number(orderId), reason: body.reason }),
+    );
   }
 }
