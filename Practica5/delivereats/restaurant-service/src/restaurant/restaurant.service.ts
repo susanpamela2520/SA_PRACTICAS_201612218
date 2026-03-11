@@ -4,26 +4,21 @@ import { Repository } from 'typeorm';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { Restaurant } from './entities/restaurant.entity';
 import { MenuItem } from './entities/menu-item.entity';
-import { RestaurantOrder, RestaurantOrderStatus } from './entities/restaurant-order.entity';
+import { RestaurantOrder } from './entities/restaurant-order.entity';
 
 @Injectable()
 export class RestaurantService {
   constructor(
     @InjectRepository(Restaurant)
     private restaurantRepo: Repository<Restaurant>,
-
     @InjectRepository(MenuItem)
     private menuItemRepo: Repository<MenuItem>,
-
     @InjectRepository(RestaurantOrder)
     private restaurantOrderRepo: Repository<RestaurantOrder>,
-
     private readonly amqpConnection: AmqpConnection,
   ) {}
 
-  // ════════════════════════════════════════════════════════
-  //  CRUD RESTAURANTE
-  // ════════════════════════════════════════════════════════
+  // CRUD para restaurante 
 
   async createRestaurant(data: any): Promise<Restaurant> {
     const newRestaurant = this.restaurantRepo.create(data);
@@ -55,9 +50,56 @@ export class RestaurantService {
     };
   }
 
-  // ════════════════════════════════════════════════════════
-  //  CRUD MENÚ
-  // ════════════════════════════════════════════════════════
+  // Listado con filtros y busquedas
+
+  async getFilteredRestaurants(filters: {
+    category?: string;
+    sortBy?: string;
+    onlyWithPromotion?: boolean;
+    search?: string;
+  }): Promise<{ restaurants: Restaurant[] }> {
+    const qb = this.restaurantRepo.createQueryBuilder('r');
+
+    // Filtro por tipo de comida/categoría
+    if (filters.category && filters.category.trim() !== '') {
+      qb.andWhere('LOWER(r.category) LIKE LOWER(:category)', {
+        category: `%${filters.category}%`,
+      });
+    }
+
+    // Filtro por búsqueda de nombre
+    if (filters.search && filters.search.trim() !== '') {
+      qb.andWhere('LOWER(r.name) LIKE LOWER(:search)', {
+        search: `%${filters.search}%`,
+      });
+    }
+
+    // Filtro solo con promoción activa
+    if (filters.onlyWithPromotion) {
+      qb.andWhere('r.hasActivePromotion = true');
+    }
+
+    // Ordenamiento dinámico
+    if (filters.sortBy === 'nuevos') {
+      qb.orderBy('r.createdAt', 'DESC');
+    } else if (filters.sortBy === 'destacados') {
+      qb.orderBy('r.totalSales', 'DESC');
+    } else if (filters.sortBy === 'mejor_puntuados') {
+      qb.orderBy('r.avgRating', 'DESC');
+    } else {
+      qb.orderBy('r.id', 'ASC');
+    }
+
+    const restaurants = await qb.getMany();
+    return { restaurants };
+  }
+
+  // Incrementar ventas cuando se acepta una orden
+  async incrementSales(restaurantId: number): Promise<void> {
+    await this.restaurantRepo.increment({ id: restaurantId }, 'totalSales', 1);
+  }
+
+  // CRUD para el menu
 
   async createMenuItem(data: any): Promise<MenuItem> {
     const restaurant = await this.restaurantRepo.findOne({ where: { id: data.restaurantId } });
@@ -87,10 +129,7 @@ export class RestaurantService {
     };
   }
 
-  // ════════════════════════════════════════════════════════
-  //  GESTIÓN DE ÓRDENES ENTRANTES
-  // ════════════════════════════════════════════════════════
-
+  //  ordenes entrantes y estados de la orden
   async getIncomingOrders(restaurantId: number): Promise<{ orders: RestaurantOrder[] }> {
     const orders = await this.restaurantOrderRepo.find({
       where: { restaurantId },
@@ -99,61 +138,40 @@ export class RestaurantService {
     return { orders };
   }
 
-  async acceptOrder(data: { orderId: number; restaurantId: number }): Promise<any> {
-    const order = await this.restaurantOrderRepo.findOne({
-      where: { orderId: data.orderId, restaurantId: data.restaurantId },
-    });
-    if (!order) throw new NotFoundException(`Orden #${data.orderId} no encontrada`);
-    if (order.status !== RestaurantOrderStatus.PENDING) {
-      throw new Error(`La orden #${data.orderId} ya fue procesada (status: ${order.status})`);
-    }
+  async acceptOrder(orderId: number): Promise<{ success: boolean; message: string }> {
+    const order = await this.restaurantOrderRepo.findOne({ where: { orderId } });
+    if (!order) throw new NotFoundException(`Orden #${orderId} no encontrada`);
 
-    order.status = RestaurantOrderStatus.ACCEPTED;
+    order.status = 'ACCEPTED';
     await this.restaurantOrderRepo.save(order);
 
+    // Incrementar ventas del restaurante
+    await this.incrementSales(order.restaurantId);
+
     await this.amqpConnection.publish('delivereats_exchange', 'order.accepted', {
-      orderId: data.orderId,
-      restaurantId: data.restaurantId,
-      userId: order.userId,
-      total: Number(order.total),
-      timestamp: new Date().toISOString(),
+      orderId,
+      restaurantId: order.restaurantId,
     });
 
-    return {
-      success: true,
-      message: `Orden #${data.orderId} aceptada`,
-      orderId: data.orderId,
-      status: RestaurantOrderStatus.ACCEPTED,
-    };
+    console.log(`[RESTAURANT] Restaurante aceptó orden #${orderId}`);
+    return { success: true, message: `Orden #${orderId} aceptada` };
   }
 
-  async rejectOrder(data: { orderId: number; restaurantId: number; reason?: string }): Promise<any> {
-    const order = await this.restaurantOrderRepo.findOne({
-      where: { orderId: data.orderId, restaurantId: data.restaurantId },
-    });
-    if (!order) throw new NotFoundException(`Orden #${data.orderId} no encontrada`);
-    if (order.status !== RestaurantOrderStatus.PENDING) {
-      throw new Error(`La orden #${data.orderId} ya fue procesada (status: ${order.status})`);
-    }
+  async rejectOrder(orderId: number, reason: string): Promise<{ success: boolean; message: string }> {
+    const order = await this.restaurantOrderRepo.findOne({ where: { orderId } });
+    if (!order) throw new NotFoundException(`Orden #${orderId} no encontrada`);
 
-    order.status = RestaurantOrderStatus.REJECTED;
-    order.rejectionReason = data.reason || 'Rechazado por el restaurante';
+    order.status = 'REJECTED';
+    order.rejectionReason = reason;
     await this.restaurantOrderRepo.save(order);
 
     await this.amqpConnection.publish('delivereats_exchange', 'order.rejected', {
-      orderId: data.orderId,
-      restaurantId: data.restaurantId,
-      userId: order.userId,
-      reason: order.rejectionReason,
-      timestamp: new Date().toISOString(),
+      orderId,
+      restaurantId: order.restaurantId,
+      reason,
     });
 
-    return {
-      success: true,
-      message: `Orden #${data.orderId} rechazada`,
-      orderId: data.orderId,
-      status: RestaurantOrderStatus.REJECTED,
-      reason: order.rejectionReason,
-    };
+    console.log(`[RESTAURANT] Restaurante rechazó orden #${orderId}: ${reason}`);
+    return { success: true, message: `Orden #${orderId} rechazada` };
   }
 }

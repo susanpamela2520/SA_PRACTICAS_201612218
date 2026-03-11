@@ -6,7 +6,7 @@ import { RestaurantService } from './restaurant.service';
 export class RestaurantController {
   constructor(private readonly restaurantService: RestaurantService) {}
 
-  // ── RESTAURANTES ──────────────────────────────────────────
+  // Incio CRUD del restaurante
   @GrpcMethod('RestaurantService', 'CreateRestaurant')
   createRestaurant(data: any) { return this.restaurantService.createRestaurant(data); }
 
@@ -22,7 +22,7 @@ export class RestaurantController {
   @GrpcMethod('RestaurantService', 'DeleteRestaurant')
   deleteRestaurant(data: { id: number }) { return this.restaurantService.deleteRestaurant(data.id); }
 
-  // ── MENÚ ──────────────────────────────────────────────────
+  // Inciio CRUD del menú
   @GrpcMethod('RestaurantService', 'CreateMenuItem')
   createMenuItem(data: any) { return this.restaurantService.createMenuItem(data); }
 
@@ -35,19 +35,30 @@ export class RestaurantController {
   @GrpcMethod('RestaurantService', 'DeleteMenuItem')
   deleteMenuItem(data: { id: number }) { return this.restaurantService.deleteMenuItem(data.id); }
 
-  // ── ÓRDENES ENTRANTES (NUEVO) ─────────────────────────────
+  // iNicio de ordenes entrantes y estados de la orden 
   @GrpcMethod('RestaurantService', 'GetIncomingOrders')
   getIncomingOrders(data: { restaurantId: number }) {
     return this.restaurantService.getIncomingOrders(data.restaurantId);
   }
 
   @GrpcMethod('RestaurantService', 'AcceptOrder')
-  acceptOrder(data: { orderId: number; restaurantId: number }) {
-    return this.restaurantService.acceptOrder(data);
+  acceptOrder(data: { orderId: number }) {
+    return this.restaurantService.acceptOrder(data.orderId);
   }
 
   @GrpcMethod('RestaurantService', 'RejectOrder')
-  rejectOrder(data: { orderId: number; restaurantId: number; reason?: string }) {
-    return this.restaurantService.rejectOrder(data);
+  rejectOrder(data: { orderId: number; reason: string }) {
+    return this.restaurantService.rejectOrder(data.orderId, data.reason);
+  }
+
+  // litados de filtros y busqueda
+  @GrpcMethod('RestaurantService', 'GetFilteredRestaurants')
+  getFilteredRestaurants(data: {
+    category?: string;
+    sortBy?: string;
+    onlyWithPromotion?: boolean;
+    search?: string;
+  }) {
+    return this.restaurantService.getFilteredRestaurants(data);
   }
 }

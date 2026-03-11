@@ -1,42 +1,43 @@
-// restaurant-service/src/proto/restaurant.proto
 syntax = "proto3";
 
 package restaurant;
 
 service RestaurantService {
-  // ── CRUD RESTAURANTES ──────────────────────────────────────
+  // --- CRUD RESTAURANTES ---
   rpc CreateRestaurant (CreateRestaurantRequest) returns (RestaurantResponse) {}
-  rpc GetRestaurants   (Empty)                   returns (RestaurantListResponse) {}
-  rpc GetRestaurant    (GetRestaurantRequest)     returns (RestaurantResponse) {}
-  rpc UpdateRestaurant (UpdateRestaurantRequest)  returns (RestaurantResponse) {}
-  rpc DeleteRestaurant (DeleteRestaurantRequest)  returns (DeleteResponse) {}
+  rpc GetRestaurants (Empty) returns (RestaurantListResponse) {}
+  rpc GetRestaurant (GetRestaurantRequest) returns (RestaurantResponse) {}
+  rpc UpdateRestaurant (UpdateRestaurantRequest) returns (RestaurantResponse) {}
+  rpc DeleteRestaurant (DeleteRestaurantRequest) returns (DeleteResponse) {}
 
-  // ── CRUD MENÚ ──────────────────────────────────────────────
-  rpc CreateMenuItem (CreateMenuItemRequest)  returns (MenuItemResponse) {}
-  rpc GetMenu        (GetMenuRequest)         returns (MenuListResponse) {}
-  rpc UpdateMenuItem (UpdateMenuItemRequest)  returns (MenuItemResponse) {}
-  rpc DeleteMenuItem (DeleteMenuItemRequest)  returns (DeleteResponse) {}
+  // --- CRUD MENÚ ---
+  rpc CreateMenuItem (CreateMenuItemRequest) returns (MenuItemResponse) {}
+  rpc GetMenu (GetMenuRequest) returns (MenuListResponse) {}
+  rpc UpdateMenuItem (UpdateMenuItemRequest) returns (MenuItemResponse) {}
+  rpc DeleteMenuItem (DeleteMenuItemRequest) returns (DeleteResponse) {}
 
-  // ── GESTIÓN DE ÓRDENES (NUEVO) ─────────────────────────────
+  // --- FLUJO ÓRDENES (RabbitMQ) ---
   rpc GetIncomingOrders (GetIncomingOrdersRequest) returns (RestaurantOrderListResponse) {}
-  rpc AcceptOrder       (AcceptOrderRequest)        returns (OrderActionResponse) {}
-  rpc RejectOrder       (RejectOrderRequest)        returns (OrderActionResponse) {}
+  rpc AcceptOrder (OrderActionRequest) returns (OrderActionResponse) {}
+  rpc RejectOrder (RejectOrderRequest) returns (OrderActionResponse) {}
+
+  // --- FILTROS Y BÚSQUEDA ---
+  rpc GetFilteredRestaurants (FilterRestaurantsRequest) returns (RestaurantListResponse) {}
 }
 
-// ── MENSAJES COMUNES ───────────────────────────────────────────
 message Empty {}
 
 message DeleteResponse {
-  bool   success = 1;
+  bool success = 1;
   string message = 2;
 }
 
-// ── MENSAJES RESTAURANTE ───────────────────────────────────────
+// --- MENSAJES RESTAURANTE ---
 message CreateRestaurantRequest {
-  string name       = 1;
-  string address    = 2;
-  string category   = 3;
-  string horario    = 4;
+  string name = 1;
+  string address = 2;
+  string category = 3;
+  string horario = 4;
   string calificacion = 5;
 }
 
@@ -45,11 +46,11 @@ message GetRestaurantRequest {
 }
 
 message UpdateRestaurantRequest {
-  int32  id       = 1;
-  string name     = 2;
-  string address  = 3;
+  int32 id = 1;
+  string name = 2;
+  string address = 3;
   string category = 4;
-  string horario  = 5;
+  string horario = 5;
 }
 
 message DeleteRestaurantRequest {
@@ -57,24 +58,36 @@ message DeleteRestaurantRequest {
 }
 
 message RestaurantResponse {
-  int32  id          = 1;
-  string name        = 2;
-  string address     = 3;
-  string category    = 4;
-  string horario     = 5;
+  int32 id = 1;
+  string name = 2;
+  string address = 3;
+  string category = 4;
+  string horario = 5;
   string calificacion = 6;
+  float avgRating = 7;
+  int32 totalSales = 8;
+  bool hasActivePromotion = 9;
+  string createdAt = 10;
 }
 
 message RestaurantListResponse {
   repeated RestaurantResponse restaurants = 1;
 }
 
-// ── MENSAJES MENÚ ──────────────────────────────────────────────
+// --- MENSAJES FILTROS ---
+message FilterRestaurantsRequest {
+  string category = 1;        // Tipo de comida: "Pizza", "Hamburguesas", etc.
+  string sortBy = 2;          // "nuevos" | "destacados" | "mejor_puntuados"
+  bool onlyWithPromotion = 3; // Solo con promoción activa
+  string search = 4;          // Búsqueda por nombre
+}
+
+// --- MENSAJES MENÚ ---
 message CreateMenuItemRequest {
-  int32  restaurantId = 1;
-  string name         = 2;
-  string description  = 3;
-  float  price        = 4;
+  int32 restaurantId = 1;
+  string name = 2;
+  string description = 3;
+  float price = 4;
 }
 
 message GetMenuRequest {
@@ -82,10 +95,10 @@ message GetMenuRequest {
 }
 
 message UpdateMenuItemRequest {
-  int32  id          = 1;
-  string name        = 2;
+  int32 id = 1;
+  string name = 2;
   string description = 3;
-  float  price       = 4;
+  float price = 4;
 }
 
 message DeleteMenuItemRequest {
@@ -93,59 +106,54 @@ message DeleteMenuItemRequest {
 }
 
 message MenuItemResponse {
-  int32  id           = 1;
-  string name         = 2;
-  string description  = 3;
-  float  price        = 4;
-  int32  restaurantId = 5;
+  int32 id = 1;
+  string name = 2;
+  string description = 3;
+  float price = 4;
+  int32 restaurantId = 5;
 }
 
 message MenuListResponse {
   repeated MenuItemResponse items = 1;
 }
 
-// ── MENSAJES ÓRDENES ENTRANTES (NUEVO) ────────────────────────
+// --- MENSAJES ÓRDENES ---
 message GetIncomingOrdersRequest {
   int32 restaurantId = 1;
 }
 
-message OrderItemSnapshot {
+message RestaurantOrderItem {
   int32 menuItemId = 1;
-  int32 quantity   = 2;
-  float price      = 3;
+  int32 quantity = 2;
+  float price = 3;
 }
 
 message RestaurantOrderResponse {
-  int32  id             = 1;
-  int32  orderId        = 2;   // ID en el order-service
-  int32  restaurantId   = 3;
-  int32  userId         = 4;
-  float  total          = 5;
-  string status         = 6;   // PENDING | ACCEPTED | REJECTED
+  int32 id = 1;
+  int32 orderId = 2;
+  int32 restaurantId = 3;
+  int32 userId = 4;
+  float total = 5;
+  string status = 6;
   string rejectionReason = 7;
-  string createdAt      = 8;
-  repeated OrderItemSnapshot items = 9;
+  string createdAt = 8;
+  repeated RestaurantOrderItem items = 9;
 }
 
 message RestaurantOrderListResponse {
   repeated RestaurantOrderResponse orders = 1;
 }
 
-message AcceptOrderRequest {
-  int32 orderId      = 1;
-  int32 restaurantId = 2;
+message OrderActionRequest {
+  int32 orderId = 1;
 }
 
 message RejectOrderRequest {
-  int32  orderId      = 1;
-  int32  restaurantId = 2;
-  string reason       = 3;   // Razón opcional del rechazo
+  int32 orderId = 1;
+  string reason = 2;
 }
 
 message OrderActionResponse {
-  bool   success  = 1;
-  string message  = 2;
-  int32  orderId  = 3;
-  string status   = 4;
-  string reason   = 5;   // Solo en rechazo
+  bool success = 1;
+  string message = 2;
 }

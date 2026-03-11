@@ -1,123 +1,158 @@
-<app-navbar></app-navbar>
-
 <div class="dashboard-container">
+  <mat-toolbar color="primary" class="toolbar">
+    <mat-icon>local_shipping</mat-icon>
+    <span class="toolbar-title">Delivereats</span>
+    <span class="spacer"></span>
+    <span class="role-badge">{{ userRole }}</span>
+    <button mat-icon-button [matMenuTriggerFor]="userMenu">
+      <mat-icon>account_circle</mat-icon>
+    </button>
+    <mat-menu #userMenu="matMenu">
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon> Cerrar sesión
+      </button>
+    </mat-menu>
+  </mat-toolbar>
 
-  <header class="header">
-    <div class="title-group">
-      <h1>Panel de Control</h1>
-      <p class="subtitle">Gestiona los restaurantes de la plataforma</p>
-    </div>
-    <div class="header-actions">
-      @if (role === 'Administrador') {
-        <button mat-flat-button color="warn" routerLink="/admin" class="add-btn">
-          <mat-icon>admin_panel_settings</mat-icon> Panel Admin
-        </button>
-        <button mat-fab extended color="primary" (click)="openCreateDialog()" class="add-btn">
-          <mat-icon>add_business</mat-icon> Nuevo Restaurante
-        </button>
-      }
-    </div>
-  </header>
+  <div class="content">
+    <h1 class="title">Panel de Control</h1>
+    <p class="subtitle">Gestiona los restaurantes de la plataforma</p>
 
-  <hr class="divider" />
+    <!-- BARRA DE FILTROS (solo para Cliente) -->
+    <div class="filters-bar" *ngIf="userRole === 'Cliente'">
+      <!-- Búsqueda por nombre -->
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Buscar restaurante</mat-label>
+        <input matInput [(ngModel)]="searchText" (ngModelChange)="applyFilters()" placeholder="Ej. Pizza Hut">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
 
-  @if (role === 'Repartidor') {
-    <div class="delivery-section">
-      <p class="delivery-hint">
-        <mat-icon>info</mat-icon>
-        Ingresa el ID de la orden para confirmar la entrega con foto.
-      </p>
-      <div class="delivery-form">
-        <mat-form-field appearance="outline">
-          <mat-label>ID de la orden</mat-label>
-          <input matInput type="number" [(ngModel)]="deliveryOrderId" placeholder="Ej: 5">
-          <mat-icon matPrefix>receipt</mat-icon>
-        </mat-form-field>
-        <button mat-raised-button color="primary"
-          [disabled]="!deliveryOrderId"
-          [routerLink]="['/delivery', deliveryOrderId]">
-          <mat-icon>camera_alt</mat-icon> Confirmar entrega con foto
-        </button>
+      <!-- Filtro por tipo de comida -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Tipo de comida</mat-label>
+        <mat-select [(ngModel)]="selectedCategory" (ngModelChange)="applyFilters()">
+          <mat-option value="">Todos</mat-option>
+          <mat-option value="Pizza">Pizza</mat-option>
+          <mat-option value="Hamburguesas">Hamburguesas</mat-option>
+          <mat-option value="Saludable">Saludable</mat-option>
+          <mat-option value="Panes">Panes</mat-option>
+          <mat-option value="Mariscos">Mariscos</mat-option>
+          <mat-option value="Pollo">Pollo</mat-option>
+          <mat-option value="Tacos">Tacos</mat-option>
+          <mat-option value="Postres">Postres</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Ordenar por -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Ordenar por</mat-label>
+        <mat-select [(ngModel)]="selectedSort" (ngModelChange)="applyFilters()">
+          <mat-option value="">Relevancia</mat-option>
+          <mat-option value="nuevos">🆕 Nuevos</mat-option>
+          <mat-option value="destacados">⭐ Destacados</mat-option>
+          <mat-option value="mejor_puntuados">🏆 Mejor puntuados</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Toggle promociones -->
+      <div class="promo-toggle">
+        <mat-slide-toggle [(ngModel)]="onlyWithPromotion" (ngModelChange)="applyFilters()" color="accent">
+          Solo con promoción
+        </mat-slide-toggle>
+      </div>
+
+      <!-- Chips de filtros activos -->
+      <div class="active-filters" *ngIf="hasActiveFilters()">
+        <mat-chip-set>
+          <mat-chip *ngIf="selectedCategory" (removed)="clearFilter('category')">
+            {{ selectedCategory }} <mat-icon matChipRemove>cancel</mat-icon>
+          </mat-chip>
+          <mat-chip *ngIf="selectedSort" (removed)="clearFilter('sort')">
+            {{ getSortLabel() }} <mat-icon matChipRemove>cancel</mat-icon>
+          </mat-chip>
+          <mat-chip *ngIf="onlyWithPromotion" (removed)="clearFilter('promo')">
+            Con promoción <mat-icon matChipRemove>cancel</mat-icon>
+          </mat-chip>
+          <mat-chip *ngIf="searchText" (removed)="clearFilter('search')">
+            "{{ searchText }}" <mat-icon matChipRemove>cancel</mat-icon>
+          </mat-chip>
+        </mat-chip-set>
+        <button mat-button color="warn" (click)="clearAllFilters()">Limpiar filtros</button>
       </div>
     </div>
-  }
 
-  @if (role !== 'Repartidor') {
-    <div class="restaurant-grid">
-      @for (res of restaurants(); track res.id) {
-        <mat-card class="restaurant-card" appearance="raised">
-          <div class="rating-badge" *ngIf="res.calificacion">
-            <mat-icon>star</mat-icon>
-            <span>{{ res.calificacion | number: "1.1-1" }}</span>
-          </div>
-
-          <mat-card-header>
-            <div mat-card-avatar class="res-avatar">
-              {{ res.name.charAt(0).toUpperCase() }}
-            </div>
-            <mat-card-title class="res-name">{{ res.name }}</mat-card-title>
-            <mat-card-subtitle>
-              <span class="category-tag">{{ res.category }}</span>
-            </mat-card-subtitle>
-          </mat-card-header>
-
-          <mat-card-content class="res-body">
-            <div class="info-item">
-              <mat-icon>location_on</mat-icon>
-              <span class="text-truncate" [matTooltip]="res.address">{{ res.address }}</span>
-            </div>
-            <div class="info-item schedule">
-              <mat-icon>schedule</mat-icon>
-              <span>{{ res.horario || "Horario no definido" }}</span>
-            </div>
-          </mat-card-content>
-
-          <mat-divider></mat-divider>
-
-          <mat-card-actions align="end">
-
-            @if (role === "Administrador") {
-              <button mat-button color="accent" (click)="editRestaurant(res)">
-                <mat-icon>edit</mat-icon> Editar
-              </button>
-              <button mat-button color="warn" (click)="deleteRestaurant(res.id!)">
-                <mat-icon>delete</mat-icon> Eliminar
-              </button>
-
-            } @else if (role === "Vendedor" || role === "Restaurante") {
-              <!-- ── Botón existente: Gestión del menú ── -->
-              <button mat-stroked-button color="primary"
-                [routerLink]="['/restaurant', res.id, 'manage-menu']"
-                class="manage-btn">
-                <mat-icon>restaurant_menu</mat-icon> Mi Menú
-              </button>
-
-              <!-- ── NUEVO: Bandeja de órdenes entrantes ── -->
-              <button mat-flat-button color="primary"
-                [routerLink]="['/restaurant', res.id, 'orders']"
-                class="manage-btn">
-                <mat-icon>inbox</mat-icon> Órdenes
-              </button>
-
-            } @else if (role === "Cliente") {
-              <button mat-flat-button color="primary"
-                [routerLink]="['/order', res.id]" class="order-btn">
-                <mat-icon>shopping_bag</mat-icon> Ver Menú e Ir a Pedir
-              </button>
-            }
-
-          </mat-card-actions>
-        </mat-card>
-      } @empty {
-        <div class="empty-state">
-          <div class="empty-icon-wrapper">
-            <mat-icon>restaurant</mat-icon>
-          </div>
-          <h3>No hay restaurantes registrados</h3>
-          <p>Parece que la cocina está cerrada por ahora.</p>
-        </div>
-      }
+    <!-- Loading -->
+    <div class="loading-container" *ngIf="loading">
+      <mat-spinner diameter="40"></mat-spinner>
     </div>
-  }
 
+    <!-- Sin resultados -->
+    <div class="empty-state" *ngIf="!loading && filteredRestaurants.length === 0 && restaurants.length > 0">
+      <mat-icon>search_off</mat-icon>
+      <p>No se encontraron restaurantes con esos filtros.</p>
+      <button mat-raised-button color="primary" (click)="clearAllFilters()">Ver todos</button>
+    </div>
+
+    <!-- GRID DE RESTAURANTES -->
+    <div class="restaurants-grid" *ngIf="!loading">
+      <mat-card class="restaurant-card" *ngFor="let r of filteredRestaurants">
+
+        <!-- Badge de promoción -->
+        <div class="promo-badge" *ngIf="r.hasActivePromotion">🎉 Promoción</div>
+
+        <div class="card-avatar">{{ r.name.charAt(0) }}</div>
+
+        <mat-card-header>
+          <mat-card-title>{{ r.name }}</mat-card-title>
+          <mat-card-subtitle>
+            <span class="category-chip">{{ r.category }}</span>
+          </mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <p><mat-icon class="info-icon">location_on</mat-icon> {{ r.address }}</p>
+          <p><mat-icon class="info-icon">schedule</mat-icon> {{ r.horario }}</p>
+          <div class="rating-row" *ngIf="r.avgRating > 0">
+            <mat-icon class="star-icon">star</mat-icon>
+            <span>{{ r.avgRating | number:'1.1-1' }}</span>
+            <span class="sales-badge" *ngIf="r.totalSales > 0">{{ r.totalSales }} ventas</span>
+          </div>
+        </mat-card-content>
+
+        <mat-card-actions>
+          <!-- Cliente: ir a pedir -->
+          <button mat-raised-button color="primary" *ngIf="userRole === 'Cliente'"
+            (click)="goToMenu(r.id)">
+            <mat-icon>shopping_bag</mat-icon> Ver Menú e Ir a Pedir
+          </button>
+
+          <!-- Restaurante/Vendedor: menú + órdenes -->
+          <ng-container *ngIf="userRole === 'Restaurante' || userRole === 'Vendedor'">
+            <button mat-raised-button color="primary" (click)="goToMenu(r.id)">
+              <mat-icon>restaurant_menu</mat-icon> Mi Menú
+            </button>
+            <button mat-raised-button color="accent" (click)="goToOrders(r.id)"
+              [matBadge]="pendingCounts[r.id] || null" matBadgeColor="warn">
+              <mat-icon>inbox</mat-icon> Órdenes
+            </button>
+          </ng-container>
+
+          <!-- Admin -->
+          <ng-container *ngIf="userRole === 'Administrador'">
+            <button mat-raised-button color="primary" (click)="goToMenu(r.id)">Ver Menú</button>
+            <button mat-icon-button color="warn" (click)="deleteRestaurant(r.id)" matTooltip="Eliminar">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </ng-container>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+
+    <!-- Botón crear restaurante (solo admin) -->
+    <div class="fab-container" *ngIf="userRole === 'Administrador'">
+      <button mat-fab color="primary" (click)="goToCreate()" matTooltip="Crear restaurante">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+  </div>
 </div>
