@@ -19,6 +19,7 @@ async function bootstrap() {
   });
 
   // Aqui se inicia el microservicio gRPC
+  await app.init();
   await app.startAllMicroservices();
 
   // NO llamamos app.listen() → no expone puerto HTTP, solo gRPC + RabbitMQ

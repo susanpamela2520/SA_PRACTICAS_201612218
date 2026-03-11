@@ -8,8 +8,8 @@ import { Restaurant } from './restaurant/entities/restaurant.entity';
 import { MenuItem } from './restaurant/entities/menu-item.entity';
 import { RestaurantOrder } from './restaurant/entities/restaurant-order.entity';
 
-import { RestaurantService } from './restaurant/restaurant.service';
 import { RestaurantController } from './restaurant/restaurant.controller';
+import { RestaurantService } from './restaurant/restaurant.service';
 import { OrderEventsConsumer } from './order-event.consumer';
 
 @Module({
@@ -31,9 +31,9 @@ import { OrderEventsConsumer } from './order-event.consumer';
       inject: [ConfigService],
     }),
 
+    // Una sola instancia de RabbitMQ — global para toda la app
     TypeOrmModule.forFeature([Restaurant, MenuItem, RestaurantOrder]),
 
-    // ← Un solo argumento, sin RabbitMQModule como primer param
     RabbitMQModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
@@ -44,6 +44,7 @@ import { OrderEventsConsumer } from './order-event.consumer';
       inject: [ConfigService],
     }),
   ],
+  // Todo en un solo módulo: controller, service y consumer juntos
   controllers: [RestaurantController],
   providers: [RestaurantService, OrderEventsConsumer],
 })
