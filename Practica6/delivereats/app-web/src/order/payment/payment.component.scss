@@ -1,0 +1,65 @@
+/* src/order/payment/payment.component.scss */
+.payment-container {
+  max-width: 500px;
+  margin: 40px auto;
+  padding: 0 16px;
+}
+
+.payment-card { border-radius: 16px !important; }
+
+.method-selector {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  button { flex: 1; height: 42px; }
+}
+
+.form { display: flex; flex-direction: column; gap: 8px; }
+
+.full-width { width: 100%; }
+
+.row-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.usd-equiv { color: #1976d2; font-weight: 600; margin-left: 4px; }
+
+.error-msg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffebee;
+  color: #c62828;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.pay-btn {
+  width: 100%;
+  height: 48px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.success-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: white;
+  border-radius: 16px;
+  padding: 40px 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+
+  .success-icon { font-size: 4rem; margin-bottom: 12px; }
+  h2 { margin: 0 0 8px; }
+  .tx-code { color: #666; font-size: 0.9rem; margin-bottom: 8px; }
+  button { margin-top: 20px; }
+}

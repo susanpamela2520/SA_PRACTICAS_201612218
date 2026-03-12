@@ -1,0 +1,132 @@
+<!-- app-web/src/restaurant/promotions/promotions.component.html — CREAR NUEVO -->
+<div class="promos-container">
+  <div class="page-header">
+    <button mat-icon-button routerLink="/dashboard">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div>
+      <h1>Mis Promociones</h1>
+      <p class="subtitle">Restaurante #{{ restaurantId() }}</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="showForm.set(!showForm())">
+      <mat-icon>{{ showForm() ? 'close' : 'add' }}</mat-icon>
+      {{ showForm() ? 'Cancelar' : 'Nueva Promoción' }}
+    </button>
+  </div>
+
+  <!-- ─── FORMULARIO NUEVA PROMOCIÓN ─────────────────────── -->
+  <mat-card class="form-card" *ngIf="showForm()">
+    <mat-card-header>
+      <mat-card-title>Crear Promoción</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Título</mat-label>
+        <input matInput [(ngModel)]="form.title" placeholder="Ej. 20% en todo el menú este fin de semana">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Descripción (opcional)</mat-label>
+        <textarea matInput [(ngModel)]="form.description" rows="2"></textarea>
+      </mat-form-field>
+
+      <!-- Tipo de promoción -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Tipo de promoción</mat-label>
+        <mat-select [(ngModel)]="form.type">
+          <mat-option value="percentage">🏷️ Porcentaje de descuento</mat-option>
+          <mat-option value="combo">🍕 Combo de productos</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Campos de porcentaje -->
+      <ng-container *ngIf="form.type === 'percentage'">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Porcentaje de descuento (%)</mat-label>
+          <input matInput type="number" [(ngModel)]="form.discountPercent" min="1" max="100">
+          <span matSuffix>%</span>
+        </mat-form-field>
+      </ng-container>
+
+      <!-- Campos de combo -->
+      <ng-container *ngIf="form.type === 'combo'">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Descripción del combo</mat-label>
+          <input matInput [(ngModel)]="form.comboDescription"
+            placeholder="Ej. Pizza grande especialidad + gaseosa 2L">
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Precio especial del combo (Q)</mat-label>
+          <input matInput type="number" [(ngModel)]="form.comboPrice" min="0">
+        </mat-form-field>
+      </ng-container>
+
+      <!-- Fechas -->
+      <div class="date-row">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Fecha de inicio</mat-label>
+          <input matInput type="datetime-local" [(ngModel)]="form.startDate">
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Fecha de fin</mat-label>
+          <input matInput type="datetime-local" [(ngModel)]="form.endDate">
+        </mat-form-field>
+      </div>
+    </mat-card-content>
+
+    <mat-card-actions>
+      <button mat-raised-button color="primary" (click)="createPromotion()"
+        [disabled]="!form.title || !form.startDate || !form.endDate">
+        <mat-icon>save</mat-icon> Guardar Promoción
+      </button>
+    </mat-card-actions>
+  </mat-card>
+
+  <!-- ─── LISTA DE PROMOCIONES ────────────────────────────── -->
+  <div class="loading-spinner" *ngIf="loading()">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading() && promotions().length === 0">
+    <mat-icon>local_offer</mat-icon>
+    <p>No hay promociones creadas aún.</p>
+  </div>
+
+  <div class="promos-grid" *ngIf="!loading()">
+    <mat-card class="promo-card" *ngFor="let promo of promotions()"
+      [class.expired]="isExpired(promo.endDate!)">
+
+      <div class="promo-type-badge" [class.combo]="promo.type === 'combo'">
+        {{ promo.type === 'percentage' ? '🏷️ Descuento' : '🍕 Combo' }}
+      </div>
+
+      <mat-card-header>
+        <mat-card-title>{{ promo.title }}</mat-card-title>
+        <mat-card-subtitle>{{ promo.description }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="promo-detail" *ngIf="promo.type === 'percentage'">
+          <span class="big-discount">{{ promo.discountPercent }}% OFF</span>
+        </div>
+        <div class="promo-detail" *ngIf="promo.type === 'combo'">
+          <p>{{ promo.comboDescription }}</p>
+          <span class="combo-price" *ngIf="promo.comboPrice">Q{{ promo.comboPrice | number:'1.2-2' }}</span>
+        </div>
+        <div class="date-info">
+          <mat-icon>event</mat-icon>
+          <span>{{ promo.startDate | date:'dd/MM/yy HH:mm' }} — {{ promo.endDate | date:'dd/MM/yy HH:mm' }}</span>
+        </div>
+        <mat-chip *ngIf="isExpired(promo.endDate!)" color="warn">Vencida</mat-chip>
+        <mat-chip *ngIf="!isExpired(promo.endDate!)" color="accent">Activa</mat-chip>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button mat-button color="warn" (click)="deletePromotion(promo.id!)">
+          <mat-icon>delete</mat-icon> Eliminar
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>

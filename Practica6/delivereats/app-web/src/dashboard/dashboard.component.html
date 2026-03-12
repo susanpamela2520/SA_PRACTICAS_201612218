@@ -1,0 +1,164 @@
+<div class="dashboard-container">
+
+
+  <div class="content">
+        <h1 class="title">Panel de Control</h1>
+    <p class="subtitle">Gestiona los restaurantes de la plataforma</p>
+
+    <!-- BARRA DE FILTROS (solo para Cliente) -->
+    <div class="filters-bar" *ngIf="userRole === 'Cliente'">
+      <!-- Búsqueda por nombre -->
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Buscar restaurante</mat-label>
+        <input matInput [(ngModel)]="searchText" (ngModelChange)="applyFilters()" placeholder="Ej. Pizza Hut">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <!-- Filtro por tipo de comida -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Tipo de comida</mat-label>
+        <mat-select [(ngModel)]="selectedCategory" (ngModelChange)="applyFilters()">
+          <mat-option value="">Todos</mat-option>
+          <mat-option value="Pizza">Pizza</mat-option>
+          <mat-option value="Hamburguesas">Hamburguesas</mat-option>
+          <mat-option value="Saludable">Saludable</mat-option>
+          <mat-option value="Panes">Panes</mat-option>
+          <mat-option value="Mariscos">Mariscos</mat-option>
+          <mat-option value="Pollo">Pollo</mat-option>
+          <mat-option value="Tacos">Tacos</mat-option>
+          <mat-option value="Postres">Postres</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Ordenar por -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Ordenar por</mat-label>
+        <mat-select [(ngModel)]="selectedSort" (ngModelChange)="applyFilters()">
+          <mat-option value="">Relevancia</mat-option>
+          <mat-option value="nuevos">🆕 Nuevos</mat-option>
+          <mat-option value="destacados">⭐ Destacados</mat-option>
+          <mat-option value="mejor_puntuados">🏆 Mejor puntuados</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Toggle promociones -->
+      <div class="promo-toggle">
+        <mat-slide-toggle [(ngModel)]="onlyWithPromotion" (ngModelChange)="applyFilters()" color="accent">
+          Solo con promoción
+        </mat-slide-toggle>
+      </div>
+
+      <!-- Chips de filtros activos -->
+      <div class="active-filters" *ngIf="hasActiveFilters()">
+        <mat-chip-set>
+          <mat-chip *ngIf="selectedCategory" (removed)="clearFilter('category')">
+            {{ selectedCategory }} <mat-icon matChipRemove>cancel</mat-icon>
+          </mat-chip>
+          <mat-chip *ngIf="selectedSort" (removed)="clearFilter('sort')">
+            {{ getSortLabel() }} <mat-icon matChipRemove>cancel</mat-icon>
+          </mat-chip>
+          <mat-chip *ngIf="onlyWithPromotion" (removed)="clearFilter('promo')">
+            Con promoción <mat-icon matChipRemove>cancel</mat-icon>
+          </mat-chip>
+          <mat-chip *ngIf="searchText" (removed)="clearFilter('search')">
+            "{{ searchText }}" <mat-icon matChipRemove>cancel</mat-icon>
+          </mat-chip>
+        </mat-chip-set>
+        <button mat-button color="warn" (click)="clearAllFilters()">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-container" *ngIf="loading">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <!-- Sin resultados -->
+    <div class="empty-state" *ngIf="!loading && filteredRestaurants.length === 0 && restaurants.length > 0">
+      <mat-icon>search_off</mat-icon>
+      <p>No se encontraron restaurantes con esos filtros.</p>
+      <button mat-raised-button color="primary" (click)="clearAllFilters()">Ver todos</button>
+    </div>
+
+    <!-- GRID DE RESTAURANTES -->
+    <div class="restaurants-grid" *ngIf="!loading">
+      <mat-card class="restaurant-card" *ngFor="let r of filteredRestaurants">
+
+        <!-- Badge de promoción -->
+        <div class="promo-badge" *ngIf="r.hasActivePromotion">🎉 Promoción</div>
+
+        <div class="card-avatar">{{ r.name.charAt(0) }}</div>
+
+        <mat-card-header>
+          <mat-card-title>{{ r.name }}</mat-card-title>
+          <mat-card-subtitle>
+            <span class="category-chip">{{ r.category }}</span>
+          </mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <p><mat-icon class="info-icon">location_on</mat-icon> {{ r.address }}</p>
+          <p><mat-icon class="info-icon">schedule</mat-icon> {{ r.horario }}</p>
+          <div class="rating-row" *ngIf="(r.avgRating || 0)> 0">
+           <mat-icon class="star-icon">star</mat-icon>
+            <span>{{ (r.avgRating || 0) | number:'1.1-1' }}</span>            <span class="sales-badge" *ngIf="(r.totalSales || 0) > 0">{{ r['totalSales'] }} ventas</span>
+          </div>
+        </mat-card-content>
+
+        <mat-card-actions>
+          <!-- Cliente: ir a pedir -->
+          <button mat-raised-button color="primary" *ngIf="userRole === 'Cliente'"
+            (click)="goToMenu(r.id!)">
+            <mat-icon>shopping_bag</mat-icon> Ver Menú e Ir a Pedir
+          </button>
+
+          <!-- Restaurante/Vendedor: menú + órdenes -->
+          <ng-container *ngIf="userRole === 'Restaurante' || userRole === 'Vendedor'">
+  <button mat-raised-button color="primary" (click)="goToMenu(r.id!)">
+    <mat-icon>restaurant_menu</mat-icon> Mi Menú
+  </button>
+  <button mat-raised-button color="accent" (click)="goToOrders(r.id!)"
+    [matBadge]="r.id ? pendingCounts[r.id] || null : null" matBadgeColor="warn">
+    <mat-icon>inbox</mat-icon> Órdenes
+  </button>
+  <button mat-raised-button (click)="router.navigate(['/restaurant', r.id, 'promotions'])">
+    <mat-icon>local_offer</mat-icon> Promociones
+  </button>
+  <button mat-raised-button (click)="router.navigate(['/restaurant', r.id, 'coupons'])">
+    <mat-icon>confirmation_number</mat-icon> Cupones
+  </button>
+</ng-container>
+
+<div *ngIf="userRole === 'Repartidor'" class="repartidor-redirect">
+  <button mat-raised-button color="primary" (click)="router.navigate(['/repartidor'])">
+    <mat-icon>delivery_dining</mat-icon> Ver mis entregas
+  </button>
+</div>
+
+          <!-- Admin -->
+         <ng-container *ngIf="userRole === 'Administrador'">
+  <button mat-raised-button color="primary" (click)="goToMenu(r.id!)">Ver Menú</button>
+  <button mat-icon-button color="warn" (click)="deleteRestaurant(r.id!)" matTooltip="Eliminar">
+    <mat-icon>delete</mat-icon>
+  </button>
+</ng-container>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+<div class="admin-quick-access" *ngIf="userRole === 'Administrador'">
+  <h3>Panel Administrativo</h3>
+  <button mat-raised-button color="primary" (click)="router.navigate(['/admin'])">
+    <mat-icon>receipt_long</mat-icon> Órdenes Finalizadas y Reembolsos
+  </button>
+  <button mat-raised-button color="accent" (click)="router.navigate(['/admin'])">
+    <mat-icon>confirmation_number</mat-icon> Aprobar Cupones
+  </button>
+</div>
+    <!-- Botón crear restaurante (solo admin) -->
+    <div class="fab-container" *ngIf="userRole === 'Administrador'">
+      <button mat-fab color="primary" (click)="goToCreate()" matTooltip="Crear restaurante">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+  </div>
+</div>

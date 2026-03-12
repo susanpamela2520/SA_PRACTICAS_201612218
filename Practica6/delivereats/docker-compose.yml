@@ -1,0 +1,212 @@
+services:
+
+  postgres-auth:
+    image: postgres:15
+    container_name: postgres_auth
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Hola.123#
+      POSTGRES_DB: auth-db
+    ports:
+      - "5433:5432"
+    networks:
+      - delivereats-network
+
+  postgres-restaurant:
+    image: postgres:15
+    container_name: postgres_restaurant
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Hola.123#
+      POSTGRES_DB: restaurant-db
+    ports:
+      - "5434:5432"
+    networks:
+      - delivereats-network
+
+  postgres-order:
+    image: postgres:15
+    container_name: postgres_order
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Hola.123#
+      POSTGRES_DB: order-db
+    ports:
+      - "5435:5432"
+    networks:
+      - delivereats-network
+
+  postgres-payment:
+    image: postgres:15
+    container_name: postgres_payment
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Hola.123#
+      POSTGRES_DB: payment-db
+    ports:
+      - "5436:5432"
+    networks:
+      - delivereats-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_container
+    ports:
+      - "6379:6379"
+    networks:
+      - delivereats-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_container
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - delivereats-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    image: pampam4188/delivereats-auth-service
+    container_name: auth_service_container
+    ports:
+      - "50051:50051"
+    environment:
+      DB_HOST_AUTH: postgres-auth
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: Hola.123#
+      DB_NAME_AUTH: auth-db
+    depends_on:
+      - postgres-auth
+    networks:
+      - delivereats-network
+
+  restaurant-service:
+    build:                             
+      context: ./restaurant-service
+      dockerfile: Dockerfile
+    container_name: restaurant_service_container
+    ports:
+      - "50052:50052"
+    environment:
+      DB_HOST_REST: postgres-restaurant
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: Hola.123#
+      DB_NAME_REST: restaurant-db
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      postgres-restaurant:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - delivereats-network
+
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    container_name: order_service_container
+    ports:
+      - "50053:50053"
+    environment:
+      DB_HOST_ORDER: postgres-order
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: Hola.123#
+      DB_NAME_ORDER: order-db
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      postgres-order:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - delivereats-network
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api_gateway_container
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - restaurant-service
+      - order-service
+      - payment-service
+      - fx-service
+    networks:
+      - delivereats-network
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: notification_service_container
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - delivereats-network
+
+  fx-service:
+    build:
+      context: ./fx-service
+      dockerfile: Dockerfile
+    container_name: fx_service_container
+    ports:
+      - "50055:50055"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - delivereats-network
+
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: payment_service_container
+    ports:
+      - "50056:50056"
+    environment:
+      DB_HOST_PAYMENT: postgres-payment
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: Hola.123#
+      DB_NAME_PAYMENT: payment-db
+    depends_on:
+      - postgres-payment
+    networks:
+      - delivereats-network
+
+networks:
+  delivereats-network:
+    driver: bridge
+
+volumes:
+  rabbitmq_data:
