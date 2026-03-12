@@ -72,6 +72,21 @@ export const routes: Routes = [
       import('../admin/admin-coupons.component').then(m => m.AdminCouponsComponent),
   },
 
+  {
+    path: 'repartidor',
+    loadComponent: () =>
+      import('../repartidor-dashboard/repartidor-dashboard.component').then(
+        m => m.RepartidorDashboardComponent,
+      ),
+  },
+
+{
+  path: 'rate/:orderId',
+  loadComponent: () =>
+    import('../order/rating/rating.component').then(m => m.RatingComponent),
+},
+
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: '**', redirectTo: 'login' },
 ];
+

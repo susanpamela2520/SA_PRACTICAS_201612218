@@ -8,10 +8,12 @@ import { OrderItem } from './entities/order-item.entity';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 import { OrderEventsConsumer } from './order-events.consumer';
+import { Rating } from './entities/rating.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, OrderItem]),
+    TypeOrmModule.forFeature([Order, OrderItem, Rating]), // Agregar Rating a TypeOrmModule
 
     // Necesario para que AmqpConnection 
     // esté disponible en OrderService

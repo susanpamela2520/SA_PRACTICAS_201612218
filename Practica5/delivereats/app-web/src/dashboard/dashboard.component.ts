@@ -15,7 +15,6 @@ import { Restaurant } from '../restaurant/intefaces/restaurant.interface';
 import { SharedModule } from '../shared/shared.module';
 import { MatDialog } from '@angular/material/dialog';
 import { RestaurantFormComponent } from '../restaurant/restaurant-form/restaurant-form.component';
-import { NavbarComponent } from '../core/navbar/navbar.component';
 import { AuthService } from '../auth/auth.service';
 import { Router, RouterLink } from '@angular/router';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -30,7 +29,7 @@ import { debounceTime, Subject } from 'rxjs';
   standalone: true,
   imports: [
     CommonModule, MatTableModule, MatButtonModule, MatIconModule, MatSnackBarModule,
-    SharedModule, NavbarComponent, RouterLink, MatTooltipModule,
+    SharedModule,  RouterLink, MatTooltipModule,
     FormsModule, MatFormFieldModule, MatInputModule, MatProgressSpinnerModule,
     MatSelectModule, MatSlideToggleModule, MatChipsModule, MatBadgeModule,
     MatMenuModule, MatToolbarModule,
@@ -66,12 +65,15 @@ export class DashboardComponent implements OnInit {
 }
 
   ngOnInit(): void {
-    if (this.userRole !== 'Repartidor') {
-      this.loadRestaurants();
-    }
-    this.filterSubject.pipe(debounceTime(300)).subscribe(() => this.executeFilter());
+  // ✅ Redirigir directo al dashboard del repartidor
+  if (this.userRole === 'Repartidor') {
+    this.router.navigate(['/repartidor']);
+    return;
   }
-
+  
+  this.loadRestaurants();
+  this.filterSubject.pipe(debounceTime(300)).subscribe(() => this.executeFilter());
+}
   loadRestaurants() {
     this.loading = true;
     this.restaurantService.getRestaurants().subscribe({

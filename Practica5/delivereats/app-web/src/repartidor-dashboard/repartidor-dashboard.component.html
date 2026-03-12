@@ -1,0 +1,113 @@
+<div class="rep-container">
+  <div class="rep-header">
+    <div>
+      <h1>🛵 Mis Entregas</h1>
+      <p class="subtitle">Órdenes listas para entregar</p>
+    </div>
+    <button mat-icon-button (click)="loadOrders()" matTooltip="Actualizar">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-center" *ngIf="loading()">
+    <mat-spinner diameter="48"></mat-spinner>
+    <p>Cargando órdenes...</p>
+  </div>
+
+  <!-- Error -->
+  <div class="error-msg" *ngIf="error()">
+    <mat-icon>error_outline</mat-icon> {{ error() }}
+    <button mat-button (click)="loadOrders()">Reintentar</button>
+  </div>
+
+  <!-- Vacío -->
+  <div class="empty-state" *ngIf="!loading() && !error() && orders().length === 0">
+    <mat-icon>delivery_dining</mat-icon>
+    <h3>No hay órdenes en preparación</h3>
+    <p>Cuando un restaurante acepte una orden aparecerá aquí.</p>
+    <button mat-raised-button color="primary" (click)="loadOrders()">
+      <mat-icon>refresh</mat-icon> Actualizar
+    </button>
+  </div>
+
+  <!-- Lista de órdenes -->
+  <div class="orders-list" *ngIf="!loading() && orders().length > 0">
+    <mat-card class="order-card" *ngFor="let order of orders()">
+      <mat-card-header>
+        <div class="order-header-row">
+          <mat-card-title>Orden #{{ order.id }}</mat-card-title>
+          <span class="status-badge" [style.background]="getStatusColor(order.status)">
+            {{ order.status }}
+          </span>
+        </div>
+        <mat-card-subtitle>{{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="order-info">
+          <div class="info-row">
+            <mat-icon>store</mat-icon>
+            <span>Restaurante #{{ order.restaurantId }}</span>
+          </div>
+          <div class="info-row">
+            <mat-icon>person</mat-icon>
+            <span>Cliente #{{ order.userId }}</span>
+          </div>
+          <div class="info-row">
+            <mat-icon>attach_money</mat-icon>
+            <span><strong>Q{{ order.total | number:'1.2-2' }}</strong></span>
+          </div>
+          <!-- Estado de pago -->
+          <div class="info-row">
+            <mat-icon>payment</mat-icon>
+            <span [style.color]="order.paymentStatus === 'PAID' ? '#10b981' : '#f59e0b'">
+              Pago: {{ order.paymentStatus || 'UNPAID' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Items de la orden -->
+        <div class="items-list" *ngIf="order.items?.length > 0">
+          <p class="items-title">Productos:</p>
+          <div class="item-row" *ngFor="let item of order.items">
+            <span>{{ item.quantity }}x producto #{{ item.menuItemId }}</span>
+            <span>Q{{ (item.price * item.quantity) | number:'1.2-2' }}</span>
+          </div>
+        </div>
+
+        <!-- Razón de fallo -->
+        <div class="fail-reason" *ngIf="order.status === 'FAILED' && order.deliveryFailedReason">
+          <mat-icon>warning</mat-icon>
+          <span>{{ order.deliveryFailedReason }}</span>
+        </div>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <!-- PREPARING → tomar y salir a entregar -->
+        <button mat-raised-button color="primary"
+          *ngIf="order.status === 'PREPARING'"
+          (click)="takeOrder(order.id)">
+          <mat-icon>delivery_dining</mat-icon> Tomar y Salir a Entregar
+        </button>
+
+        <!-- OUT_FOR_DELIVERY → confirmar entrega con foto -->
+        <button mat-raised-button color="accent"
+          *ngIf="order.status === 'OUT_FOR_DELIVERY'"
+          (click)="goToDelivery(order.id)">
+          <mat-icon>photo_camera</mat-icon> Confirmar Entrega
+        </button>
+
+        <!-- DELIVERED → solo mostrar estado -->
+        <span class="done-label" *ngIf="order.status === 'DELIVERED'">
+          <mat-icon>check_circle</mat-icon> Entregado
+        </span>
+
+        <!-- FAILED → mostrar estado -->
+        <span class="fail-label" *ngIf="order.status === 'FAILED'">
+          <mat-icon>cancel</mat-icon> Fallido
+        </span>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>

@@ -49,4 +49,24 @@ export class OrderController {
   getFinishedOrders(_data: any) {
     return this.orderService.getFinishedOrders();
   }
+
+  @GrpcMethod('OrderService', 'GetOrdersByStatus')
+  getOrdersByStatus(data: { status: string }) {
+    return this.orderService.getOrdersByStatus(data.status);
+  }
+
+
+  //crea el rating de una orden
+  @GrpcMethod('OrderService', 'CreateRating')
+createRating(data: any) { return this.orderService.createRating(data); }
+
+@GrpcMethod('OrderService', 'GetRatingsByRestaurant')
+getRatingsByRestaurant(data: { restaurantId: number }) {
+  return this.orderService.getRatingsByRestaurant(data.restaurantId);
+}
+
+@GrpcMethod('OrderService', 'GetRatingByOrder')
+getRatingByOrder(data: { orderId: number }) {
+  return this.orderService.getRatingByOrder(data.orderId);
+}
 }

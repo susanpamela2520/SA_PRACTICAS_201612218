@@ -17,6 +17,10 @@ interface OrderServiceClient {
   updatePaymentStatus(data: any): any;
   getOrdersByRestaurant(data: any): any;
   getFinishedOrders(data: any): any;
+  getOrdersByStatus(data: any): any;
+  createRating(data: any): any;
+getRatingsByRestaurant(data: any): any;
+getRatingByOrder(data: any): any;
 }
 
 @Controller("orders")
@@ -42,6 +46,18 @@ export class OrderController implements OnModuleInit {
     return this.orderService.getOrdersByUser({ userId: req.user.userId });
   }
 
+@Get("by-status/:status")
+  @Roles("Repartidor", "Administrador")
+  async getByStatus(@Param("status") status: string) {
+    return this.orderService.getOrdersByStatus({ status });
+  }
+
+   @Get("restaurant/:restaurantId")
+  @Roles("Restaurante", "Vendedor", "Administrador")
+  async getByRestaurant(@Param("restaurantId") restaurantId: string) {
+    return this.orderService.getOrdersByRestaurant({ restaurantId: Number(restaurantId) });
+  }
+  
   @Get(":id")
   async getOne(@Param("id") id: string) {
     return this.orderService.getOrder({ id: Number(id) });
@@ -66,9 +82,22 @@ export class OrderController implements OnModuleInit {
     });
   }
 
-  @Get("restaurant/:restaurantId")
-  @Roles("Restaurante", "Vendedor", "Administrador")
-  async getByRestaurant(@Param("restaurantId") restaurantId: string) {
-    return this.orderService.getOrdersByRestaurant({ restaurantId: Number(restaurantId) });
-  }
+  //Rating 
+  @Post('rate')
+@Roles('Cliente')
+async rateOrder(@Body() body: any, @Request() req: any) {
+  return this.orderService.createRating({ ...body, userId: req.user.userId });
+}
+
+@Get('ratings/restaurant/:restaurantId')
+@Roles('Restaurante', 'Vendedor', 'Administrador', 'Cliente')
+async getRestaurantRatings(@Param('restaurantId') restaurantId: string) {
+  return this.orderService.getRatingsByRestaurant({ restaurantId: Number(restaurantId) });
+}
+
+@Get(':orderId/rating')
+@Roles('Cliente', 'Administrador', 'Repartidor')
+async getOrderRating(@Param('orderId') orderId: string) {
+  return this.orderService.getRatingByOrder({ orderId: Number(orderId) });
+}
 }

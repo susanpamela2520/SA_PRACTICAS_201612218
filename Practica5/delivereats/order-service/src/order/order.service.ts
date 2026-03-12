@@ -5,6 +5,7 @@ import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { randomUUID } from 'crypto';
 import { Order, PaymentStatus } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
+import { Rating } from './entities/rating.entity';
 
 @Injectable()
 export class OrderService {
@@ -12,6 +13,8 @@ export class OrderService {
     @InjectRepository(Order)
     private orderRepo: Repository<Order>,
 
+    @InjectRepository(Rating)
+    private ratingRepo: Repository<Rating>,
     // Aqui se usa el AmqpConnection para publicar eventos
     private readonly amqpConnection: AmqpConnection,
   ) {}
@@ -137,4 +140,38 @@ export class OrderService {
       .getMany();
     return { orders };
   }
+
+  async getOrdersByStatus(status: string): Promise<{ orders: Order[] }> {
+    const orders = await this.orderRepo.find({
+      where: { status },
+      relations: ["items"],
+      order: { createdAt: "ASC" },
+    });
+    return { orders };
+  }
+
+
+  //creacion del rating 
+async createRating(data: any): Promise<any> {
+  const order = await this.orderRepo.findOne({ where: { id: data.orderId } });
+  if (!order) throw new Error('Orden no encontrada');
+  if (order.status !== 'DELIVERED') throw new Error('Solo se pueden calificar órdenes entregadas');
+  const rating = this.ratingRepo.create(data);
+  return this.ratingRepo.save(rating);
+}
+
+async getRatingsByRestaurant(restaurantId: number): Promise<{ ratings: any[]; avg: number }> {
+  const ratings = await this.ratingRepo.find({ where: { restaurantId } });
+  const avg = ratings.length
+    ? ratings.reduce((s, r) => s + (r.ratingRestaurant || 0), 0) / ratings.length
+    : 0;
+  return { ratings, avg };
+}
+
+async getRatingByOrder(orderId: number): Promise<{ rating: any }> {
+  const rating = await this.ratingRepo.findOne({ where: { orderId } });
+  return { rating };
+}
+
+
 }
