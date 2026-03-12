@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,6 +23,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { CommonModule } from '@angular/common';
 import { debounceTime, Subject } from 'rxjs';
+import { HttpHeaders } from '@angular/common/http';
+import { HttpClient} from '@angular/common/http';
 
 @Component({
   selector: 'app-dashboard',
@@ -43,6 +45,7 @@ export class DashboardComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
   private authService = inject(AuthService);
   public router = inject(Router);
+  private http = inject(HttpClient);
 
   restaurants: Restaurant[] = [];
   filteredRestaurants: Restaurant[] = [];
@@ -53,6 +56,7 @@ export class DashboardComponent implements OnInit {
   selectedCategory = '';
   selectedSort = '';
   onlyWithPromotion = false;
+  myDeliveredOrders = signal<any[]>([]);
 
   private filterSubject = new Subject<void>();
 
@@ -65,15 +69,16 @@ export class DashboardComponent implements OnInit {
 }
 
   ngOnInit(): void {
-  // ✅ Redirigir directo al dashboard del repartidor
   if (this.userRole === 'Repartidor') {
     this.router.navigate(['/repartidor']);
     return;
   }
-  
+  if (this.userRole === 'Cliente') this.loadMyOrders();
   this.loadRestaurants();
   this.filterSubject.pipe(debounceTime(300)).subscribe(() => this.executeFilter());
 }
+  
+  
   loadRestaurants() {
     this.loading = true;
     this.restaurantService.getRestaurants().subscribe({
@@ -85,6 +90,18 @@ export class DashboardComponent implements OnInit {
       error: () => { this.showMsg('Error al cargar restaurantes'); this.loading = false; },
     });
   }
+
+
+  loadMyOrders() {
+      const headers = new HttpHeaders({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+      this.http.get<any>('http://localhost:3000/orders/my', { headers }).subscribe({
+        next: (res) => {
+        const delivered = (res.orders || []).filter((o: any) => o.status === 'DELIVERED');
+        this.myDeliveredOrders.set(delivered);
+    },
+    error: () => {}
+  });
+}
 
   applyFilters() { this.filterSubject.next(); }
 
@@ -134,7 +151,13 @@ export class DashboardComponent implements OnInit {
     this.router.navigate(['/login']);
   }
 
-  goToMenu(restaurantId: number) { this.router.navigate(['/menu', restaurantId]); }
+  goToMenu(restaurantId: number) {
+    if (this.userRole === 'Cliente') {
+      this.router.navigate(['/menu', restaurantId]);
+    } else {
+      this.router.navigate(['/restaurant', restaurantId, 'manage-menu']);
+    }
+  }
   goToOrders(restaurantId: number) { this.router.navigate(['/restaurant', restaurantId, 'orders']); }
 
   goToCreate() {

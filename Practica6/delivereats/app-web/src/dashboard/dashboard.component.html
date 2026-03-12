@@ -108,9 +108,13 @@
         <mat-card-actions>
           <!-- Cliente: ir a pedir -->
           <button mat-raised-button color="primary" *ngIf="userRole === 'Cliente'"
-            (click)="goToMenu(r.id!)">
-            <mat-icon>shopping_bag</mat-icon> Ver Menú e Ir a Pedir
-          </button>
+  (click)="goToMenu(r.id!)">
+  <mat-icon>shopping_bag</mat-icon> Ver Menú e Ir a Pedir
+</button>
+<button mat-stroked-button *ngIf="userRole === 'Cliente'"
+  (click)="router.navigate(['/restaurant', r.id, 'promotions'])">
+  <mat-icon>local_offer</mat-icon> Ver Promociones
+</button>
 
           <!-- Restaurante/Vendedor: menú + órdenes -->
           <ng-container *ngIf="userRole === 'Restaurante' || userRole === 'Vendedor'">
@@ -133,6 +137,21 @@
   <button mat-raised-button color="primary" (click)="router.navigate(['/repartidor'])">
     <mat-icon>delivery_dining</mat-icon> Ver mis entregas
   </button>
+</div>
+
+
+<!-- Mis órdenes para calificar -->
+<div *ngIf="userRole === 'Cliente' && myDeliveredOrders().length > 0" class="my-orders-section">
+  <h3>⭐ Órdenes por calificar</h3>
+  <div class="orders-mini-list">
+    <div class="order-mini-card" *ngFor="let o of myDeliveredOrders()">
+      <span>Orden #{{ o.id }} — Q{{ o.total | number:'1.2-2' }}</span>
+      <button mat-raised-button color="accent" 
+        (click)="router.navigate(['/rate', o.id], { queryParams: { restaurantId: o.restaurantId } })">
+        <mat-icon>star</mat-icon> Calificar
+      </button>
+    </div>
+  </div>
 </div>
 
           <!-- Admin -->

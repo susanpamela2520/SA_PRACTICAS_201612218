@@ -60,14 +60,17 @@ export class PromotionsComponent implements OnInit {
   }
 
   loadPromotions() {
-    this.loading.set(true);
-    const headers = new HttpHeaders({ Authorization: 'Bearer ' + localStorage.getItem('token') });
-    this.http.get<any>(`${this.apiUrl}/restaurants/${this.restaurantId()}/promotions`, { headers })
-      .subscribe({
-        next: (res) => { this.promotions.set(res.promotions || []); this.loading.set(false); },
-        error: () => { this.snack.open('Error al cargar promociones', 'OK', { duration: 3000 }); this.loading.set(false); },
-      });
-  }
+  this.loading.set(true);
+  const token = localStorage.getItem('token');
+  const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+  const url = this.isCliente
+    ? `${this.apiUrl}/restaurants/${this.restaurantId()}/promotions/active`
+    : `${this.apiUrl}/restaurants/${this.restaurantId()}/promotions`;
+  this.http.get<any>(url, { headers }).subscribe({
+    next: (res) => { this.promotions.set(res.promotions || []); this.loading.set(false); },
+    error: () => this.loading.set(false),
+  });
+}
 
   createPromotion() {
     const headers = new HttpHeaders({
@@ -99,4 +102,13 @@ export class PromotionsComponent implements OnInit {
   isExpired(endDate: string): boolean {
     return new Date(endDate) < new Date();
   }
+
+  get isCliente(): boolean {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+    return JSON.parse(atob(token.split('.')[1])).role === 'Cliente';
+  } catch { return false; }
+}
+
 }
