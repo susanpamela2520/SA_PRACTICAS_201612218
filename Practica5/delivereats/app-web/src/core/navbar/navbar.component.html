@@ -1,28 +1,31 @@
 <mat-toolbar color="primary" class="main-toolbar mat-elevation-z4">
   <div class="container">
-    <div class="brand" (click)="goToHome()">
+    <!-- Logo / Ir al dashboard -->
+    <div class="brand" (click)="goToHome()" style="cursor:pointer">
       <mat-icon class="logo-icon">local_shipping</mat-icon>
       <span class="brand-name">Delivereats</span>
     </div>
 
+    <!-- Botón volver al dashboard -->
+    <button mat-button (click)="goToHome()" class="home-btn">
+      <mat-icon>home</mat-icon> Inicio
+    </button>
+
     <span class="spacer"></span>
 
-    @if (userRole() === "Cliente") {
+    @if (userRole() === 'Cliente') {
       <div class="cart-section">
         <button mat-icon-button [matMenuTriggerFor]="cartMenu" class="cart-btn">
           <mat-icon
             [matBadge]="cartService.count()"
             matBadgeColor="warn"
-            [matBadgeHidden]="cartService.count() === 0"
-          >
+            [matBadgeHidden]="cartService.count() === 0">
             shopping_cart
           </mat-icon>
         </button>
 
         <mat-menu #cartMenu="matMenu" class="cart-dropdown">
-          <div class="cart-header" (click)="$event.stopPropagation()">
-            Tu Pedido
-          </div>
+          <div class="cart-header" (click)="$event.stopPropagation()">Tu Pedido</div>
           <mat-divider></mat-divider>
 
           <div class="cart-items-list">
@@ -32,9 +35,7 @@
                   <span class="qty">{{ item.quantity }}x</span>
                   <span class="name">{{ item.name }}</span>
                 </div>
-                <span class="price"
-                  >Q{{ item.price * item.quantity | number: "1.2-2" }}</span
-                >
+                <span class="price">Q{{ item.price * item.quantity | number:'1.2-2' }}</span>
               </div>
             } @empty {
               <div class="empty-cart-msg">El carrito está vacío</div>
@@ -42,19 +43,14 @@
           </div>
 
           <mat-divider></mat-divider>
-
           <div class="cart-footer" (click)="$event.stopPropagation()">
             <div class="total-row">
               <span>Total:</span>
-              <strong>Q{{ cartService.total() | number: "1.2-2" }}</strong>
+              <strong>Q{{ cartService.total() | number:'1.2-2' }}</strong>
             </div>
-            <button
-              mat-flat-button
-              color="primary"
-              class="w-100"
+            <button mat-flat-button color="primary" class="w-100"
               [disabled]="cartService.count() === 0"
-              (click)="checkout()"
-            >
+              (click)="checkout()">
               PAGAR AHORA
             </button>
           </div>
